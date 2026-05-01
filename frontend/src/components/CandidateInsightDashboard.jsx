@@ -23,6 +23,11 @@ const CandidateInsightDashboard = () => {
       return;
     }
 
+    if (file.size > 4 * 1024 * 1024) {
+      setError("Please upload a PDF smaller than 4 MB for Vercel deployment.");
+      return;
+    }
+
     try {
       setIsLoading(true);
 
@@ -64,4 +69,3 @@ const CandidateInsightDashboard = () => {
 };
 
 export default CandidateInsightDashboard;
-

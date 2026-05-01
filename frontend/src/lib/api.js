@@ -32,7 +32,11 @@ export const parseResume = async ({ file, name, email }) => {
   try {
     data = responseText ? JSON.parse(responseText) : {};
   } catch {
-    throw new Error(responseText || "The server returned a non-JSON response.");
+    throw new Error(
+      responseText
+        ? `Server returned a non-JSON response (${response.status}): ${responseText}`
+        : "The server returned an empty non-JSON response."
+    );
   }
 
   if (!response.ok) {

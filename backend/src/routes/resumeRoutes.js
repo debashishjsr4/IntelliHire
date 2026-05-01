@@ -7,7 +7,7 @@ const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024
+    fileSize: 4 * 1024 * 1024
   },
   fileFilter: (_req, file, callback) => {
     if (file.mimetype !== "application/pdf") {
@@ -21,4 +21,3 @@ const upload = multer({
 router.post("/parse", upload.single("resume"), parseResume);
 
 export default router;
-

@@ -134,6 +134,8 @@ const getProviderErrorMessage = async (response, providerName) => {
   }
 };
 
+const getProviderTimeoutSignal = () => AbortSignal.timeout(25_000);
+
 const analyzeWithMock = async (resumeText) => {
   const commonSkillKeywords = [
     "React",
@@ -182,6 +184,7 @@ const analyzeWithOpenAI = async (resumeText) => {
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
+    signal: getProviderTimeoutSignal(),
     headers: {
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       "Content-Type": "application/json"
@@ -235,6 +238,7 @@ const analyzeWithGemini = async (resumeText) => {
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: "POST",
+      signal: getProviderTimeoutSignal(),
       headers: {
         "x-goog-api-key": process.env.GEMINI_API_KEY,
         "Content-Type": "application/json"
@@ -278,9 +282,17 @@ export const analyzeResumeText = async (resumeText) => {
     return analyzeWithMock(resumeText);
   }
 
-  if (provider === "gemini") {
-    return analyzeWithGemini(resumeText);
-  }
+  try {
+    if (provider === "gemini") {
+      return await analyzeWithGemini(resumeText);
+    }
 
-  return analyzeWithOpenAI(resumeText);
+    return await analyzeWithOpenAI(resumeText);
+  } catch (error) {
+    if (error.name === "TimeoutError" || error.name === "AbortError") {
+      throw new Error("AI provider timed out. Please retry with a smaller resume PDF.");
+    }
+
+    throw error;
+  }
 };

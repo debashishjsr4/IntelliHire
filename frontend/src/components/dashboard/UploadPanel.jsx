@@ -50,7 +50,7 @@ const UploadPanel = ({
           <span className="mt-3 text-sm font-semibold text-slate-800">
             {file ? file.name : "Upload PDF resume"}
           </span>
-          <span className="mt-1 text-xs text-slate-500">PDF only, up to 5 MB</span>
+          <span className="mt-1 text-xs text-slate-500">PDF only, up to 4 MB</span>
           <input
             accept="application/pdf"
             className="sr-only"
@@ -83,4 +83,3 @@ const UploadPanel = ({
 };
 
 export default UploadPanel;
-
