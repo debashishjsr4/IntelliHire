@@ -31,6 +31,10 @@ app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok", service: "intellihire-api" });
 });
 
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({ status: "ok", service: "intellihire-api" });
+});
+
 app.use("/api/resumes", resumeRoutes);
 
 app.use(notFoundHandler);
