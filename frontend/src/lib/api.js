@@ -26,7 +26,14 @@ export const parseResume = async ({ file, name, email }) => {
     );
   }
 
-  const data = await response.json();
+  const responseText = await response.text();
+  let data = {};
+
+  try {
+    data = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    throw new Error(responseText || "The server returned a non-JSON response.");
+  }
 
   if (!response.ok) {
     throw new Error(data.message || "Resume parsing failed.");

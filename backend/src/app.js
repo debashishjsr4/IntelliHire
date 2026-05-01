@@ -1,10 +1,12 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
+import connectDB from "./config/db.js";
 import resumeRoutes from "./routes/resumeRoutes.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 
 const app = express();
+let cachedConnectionPromise;
 
 const vercelOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
 const allowedOrigins = [
@@ -35,7 +37,26 @@ app.get("/api/health", (_req, res) => {
   res.status(200).json({ status: "ok", service: "intellihire-api" });
 });
 
+app.use(async (req, _res, next) => {
+  if (!req.path.includes("/resumes")) {
+    return next();
+  }
+
+  try {
+    if (!cachedConnectionPromise) {
+      cachedConnectionPromise = connectDB();
+    }
+
+    await cachedConnectionPromise;
+    return next();
+  } catch (error) {
+    cachedConnectionPromise = null;
+    return next(error);
+  }
+});
+
 app.use("/api/resumes", resumeRoutes);
+app.use("/resumes", resumeRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

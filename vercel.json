@@ -7,7 +7,7 @@
       "framework": "vite"
     },
     "backend": {
-      "entrypoint": "backend",
+      "entrypoint": "backend/index.js",
       "routePrefix": "/api",
       "framework": "express",
       "maxDuration": 60
