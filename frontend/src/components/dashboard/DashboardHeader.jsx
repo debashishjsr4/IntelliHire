@@ -12,18 +12,20 @@ const DashboardHeader = ({
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 lg:px-8">
         <div className="min-w-0">
           <p className="text-sm font-semibold uppercase tracking-wide text-[#1a365d]">
             {subtitle}
           </p>
-          <h2 className="mt-1 truncate text-2xl font-bold tracking-normal text-slate-950">
+          <h2 className="mt-1 truncate text-xl font-bold tracking-normal text-slate-950 sm:text-2xl">
             {title || candidateName || "Resume Intelligence"}
           </h2>
         </div>
 
         <div className="flex items-center gap-3">
-          <MatchScore score={matchScore} />
+          <div className="hidden md:block">
+            <MatchScore score={matchScore} />
+          </div>
 
           <button
             className="hidden h-10 w-10 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition duration-200 hover:border-[#1a365d] hover:text-[#1a365d] sm:inline-flex"
@@ -35,7 +37,7 @@ const DashboardHeader = ({
 
           <div className="relative">
             <button
-              className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition duration-200 hover:border-[#1a365d] hover:text-[#1a365d]"
+              className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-2 text-sm font-semibold text-slate-700 transition duration-200 hover:border-[#1a365d] hover:text-[#1a365d] sm:px-3"
               onClick={() => setIsProfileOpen((current) => !current)}
               type="button"
             >

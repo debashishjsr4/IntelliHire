@@ -16,7 +16,7 @@ const InsightsGrid = ({ isLoading, result }) => {
   return (
     <section className="grid gap-6 xl:grid-cols-2">
       <SummaryCard summary={result.summary} />
-      <SkillsCard skills={result.skills || []} />
+      <SkillsCard skillScores={result.skill_scores || result.candidate?.skill_scores || []} />
       <ExperienceTimelineCard timeline={result.experience_timeline || result.candidate?.experience_timeline || []} />
     </section>
   );

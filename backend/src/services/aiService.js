@@ -4,7 +4,16 @@ You are an expert technical recruiter.
 Analyze the resume text below and return only valid JSON.
 The JSON shape must be:
 {
+  "candidate_name": "Candidate full name if present, otherwise Not available",
+  "email": "Candidate email if present, otherwise Not available",
   "skills": ["skill 1", "skill 2", "skill 3", "skill 4", "skill 5"],
+  "skill_scores": [
+    {
+      "name": "skill name",
+      "score": 85,
+      "evidence": "Short resume-based reason for this score"
+    }
+  ],
   "summary": "One sentence summary of the candidate.",
   "experience_timeline": [
     {
@@ -17,7 +26,18 @@ The JSON shape must be:
 }
 
 Rules:
-- Include the candidate's top 5 technical skills.
+- Extract the candidate name and email from the resume text only.
+- If the candidate name is missing, set candidate_name to "Not available".
+- If the email address is missing, set email to "Not available".
+- Include the candidate's top 5 technical skills in both skills and skill_scores.
+- The skills array must contain the same skill names, in the same order, as skill_scores.
+- Score each skill from 0 to 100 using only resume evidence.
+- Use 90-100 for deep repeated professional use with ownership or leadership.
+- Use 75-89 for strong practical job or major project usage.
+- Use 55-74 for moderate usage with limited detail.
+- Use 30-54 for mentioned skills with weak evidence.
+- Do not include skills below 30 unless they are central to the resume.
+- Keep evidence short and specific to what the resume says.
 - Extract 3 to 5 real career or education milestones from the resume.
 - Use only information present in the resume text for the timeline.
 - If dates are missing, set period to "Not specified".
@@ -32,14 +52,43 @@ ${resumeText}
 const resumeAnalysisSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["skills", "summary", "experience_timeline"],
+  required: ["candidate_name", "email", "skills", "skill_scores", "summary", "experience_timeline"],
   properties: {
+    candidate_name: {
+      type: "string"
+    },
+    email: {
+      type: "string"
+    },
     skills: {
       type: "array",
       minItems: 5,
       maxItems: 5,
       items: {
         type: "string"
+      }
+    },
+    skill_scores: {
+      type: "array",
+      minItems: 5,
+      maxItems: 5,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["name", "score", "evidence"],
+        properties: {
+          name: {
+            type: "string"
+          },
+          score: {
+            type: "integer",
+            minimum: 0,
+            maximum: 100
+          },
+          evidence: {
+            type: "string"
+          }
+        }
       }
     },
     summary: {
@@ -98,23 +147,82 @@ const parseJsonFromModel = (content) => {
   }
 };
 
-const normalizeAnalysis = (analysis) => ({
-  skills: Array.isArray(analysis.skills)
-    ? analysis.skills.filter((skill) => typeof skill === "string").slice(0, 5)
-    : [],
-  summary: typeof analysis.summary === "string" ? analysis.summary : "",
-  experience_timeline: Array.isArray(analysis.experience_timeline)
-    ? analysis.experience_timeline
-        .filter((item) => item && typeof item === "object")
-        .slice(0, 5)
-        .map((item) => ({
-          title: typeof item.title === "string" ? item.title : "Milestone",
-          company: typeof item.company === "string" ? item.company : "Not specified",
-          period: typeof item.period === "string" ? item.period : "Not specified",
-          detail: typeof item.detail === "string" ? item.detail : "No detail available."
-        }))
-    : []
-});
+const normalizeScore = (score) => {
+  if (typeof score !== "number" || Number.isNaN(score)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(score)));
+};
+
+const getScoreLevel = (score) => {
+  if (score >= 90) {
+    return "Expert";
+  }
+
+  if (score >= 75) {
+    return "Strong";
+  }
+
+  if (score >= 55) {
+    return "Moderate";
+  }
+
+  if (score >= 30) {
+    return "Mentioned";
+  }
+
+  return "Low evidence";
+};
+
+const normalizeSkillScores = (skillScores, skills) => {
+  if (Array.isArray(skillScores) && skillScores.length) {
+    return skillScores
+      .filter((skill) => skill && typeof skill === "object" && typeof skill.name === "string")
+      .slice(0, 5)
+      .map((skill) => {
+        const score = normalizeScore(skill.score);
+
+        return {
+          name: skill.name.trim(),
+          score,
+          level: getScoreLevel(score),
+          evidence: typeof skill.evidence === "string" ? skill.evidence : ""
+        };
+      })
+      .filter((skill) => skill.name);
+  }
+
+  return [];
+};
+
+const normalizeAnalysis = (analysis) => {
+  const skillScores = normalizeSkillScores(analysis.skill_scores, analysis.skills);
+  const skillNames = skillScores.length
+    ? skillScores.map((skill) => skill.name)
+    : Array.isArray(analysis.skills)
+      ? analysis.skills.filter((skill) => typeof skill === "string").slice(0, 5)
+      : [];
+
+  return {
+    candidate_name: typeof analysis.candidate_name === "string" ? analysis.candidate_name : "",
+    email: typeof analysis.email === "string" ? analysis.email : "",
+    skills: skillNames,
+    skill_scores: skillScores,
+    summary: typeof analysis.summary === "string" ? analysis.summary : "",
+    experience_timeline: Array.isArray(analysis.experience_timeline)
+      ? analysis.experience_timeline
+          .filter((item) => item && typeof item === "object")
+          .slice(0, 5)
+          .map((item) => ({
+            title: typeof item.title === "string" ? item.title : "Milestone",
+            company: typeof item.company === "string" ? item.company : "Not specified",
+            period: typeof item.period === "string" ? item.period : "Not specified",
+            detail: typeof item.detail === "string" ? item.detail : "No detail available."
+          }))
+      : []
+  };
+};
 
 const getProviderErrorMessage = async (response, providerName) => {
   const errorBody = await response.text();
@@ -158,7 +266,15 @@ const analyzeWithMock = async (resumeText) => {
   const skills = [...new Set([...detectedSkills, "JavaScript", "Node.js", "React", "MongoDB", "REST APIs"])].slice(0, 5);
 
   return {
+    candidate_name: "Not available",
+    email: "Not available",
     skills,
+    skill_scores: skills.map((skill, index) => ({
+      name: skill,
+      score: Math.min(88, 68 + index * 4),
+      level: getScoreLevel(Math.min(88, 68 + index * 4)),
+      evidence: "Mock provider generated this score because no live LLM analysis is active."
+    })),
     summary: "Mock analysis: this candidate appears to have practical full-stack development experience.",
     experience_timeline: [
       {

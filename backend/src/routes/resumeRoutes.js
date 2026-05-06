@@ -1,6 +1,10 @@
 import { Router } from "express";
 import multer from "multer";
-import { getParsedCandidates, parseResume } from "../controllers/resumeController.js";
+import {
+  deleteParsedCandidate,
+  getParsedCandidates,
+  parseResume
+} from "../controllers/resumeController.js";
 
 const router = Router();
 
@@ -19,6 +23,7 @@ const upload = multer({
 });
 
 router.get("/candidates", getParsedCandidates);
+router.delete("/candidates/:candidateId", deleteParsedCandidate);
 router.post("/parse", upload.single("resume"), parseResume);
 
 export default router;

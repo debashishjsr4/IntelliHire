@@ -5,17 +5,44 @@ const candidateSchema = new mongoose.Schema(
     name: {
       type: String,
       trim: true,
-      default: "Unknown Candidate"
+      default: "Not available"
     },
     email: {
       type: String,
       trim: true,
-      lowercase: true,
       index: true,
-      default: ""
+      default: "Not available"
     },
     extracted_skills: {
       type: [String],
+      default: []
+    },
+    skill_scores: {
+      type: [
+        {
+          name: {
+            type: String,
+            trim: true,
+            default: ""
+          },
+          score: {
+            type: Number,
+            min: 0,
+            max: 100,
+            default: 0
+          },
+          level: {
+            type: String,
+            trim: true,
+            default: ""
+          },
+          evidence: {
+            type: String,
+            trim: true,
+            default: ""
+          }
+        }
+      ],
       default: []
     },
     resume_url: {

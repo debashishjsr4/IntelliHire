@@ -37,10 +37,11 @@ POST /api/resumes/parse
 Content-Type: multipart/form-data
 
 resume=<pdf-file>
-name=<optional candidate name>
-email=<optional candidate email>
 resume_url=<optional hosted resume URL>
 ```
+
+Candidate name and email are extracted from the uploaded CV. If no email address is found, the saved candidate record uses `Not available`.
+Skill percentages are scored by the configured LLM from resume evidence and stored with the candidate as `skill_scores`, including the skill name, score, derived level, and evidence. The level is derived from the score bands shown in the UI guide so labels stay consistent.
 
 ## Frontend
 
