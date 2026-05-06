@@ -10,7 +10,7 @@ import InsightsGrid from "./dashboard/InsightsGrid.jsx";
 import Sidebar from "./dashboard/Sidebar.jsx";
 import UploadPanel from "./dashboard/UploadPanel.jsx";
 
-const CandidateInsightDashboard = () => {
+const CandidateInsightDashboard = ({ authenticatedUser, onLogout }) => {
   const [activeView, setActiveView] = useState("dashboard");
   const [candidates, setCandidates] = useState([]);
   const [candidatesError, setCandidatesError] = useState("");
@@ -111,7 +111,9 @@ const CandidateInsightDashboard = () => {
 
       <div className="lg:pl-72">
         <DashboardHeader
+          authenticatedUser={authenticatedUser}
           candidateName={result?.candidate?.name}
+          onLogout={onLogout}
           profileScore={activeProfileScore}
           subtitle={activeView === "candidates" ? "Candidate Database" : "Candidate Insight Dashboard"}
           title={activeView === "candidates" ? "Parsed CV Library" : undefined}

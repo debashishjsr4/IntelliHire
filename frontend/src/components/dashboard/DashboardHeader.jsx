@@ -3,7 +3,9 @@ import { useState } from "react";
 import MatchScore from "./MatchScore.jsx";
 
 const DashboardHeader = ({
+  authenticatedUser,
   candidateName,
+  onLogout,
   profileScore,
   subtitle = "Candidate Insight Dashboard",
   title
@@ -44,19 +46,27 @@ const DashboardHeader = ({
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1a365d] text-white">
                 <UserRound className="h-4 w-4" aria-hidden="true" />
               </span>
-              <span className="hidden sm:inline">User Profile</span>
+              <span className="hidden max-w-32 truncate sm:inline">
+                {authenticatedUser || "User Profile"}
+              </span>
               <ChevronDown className="h-4 w-4" aria-hidden="true" />
             </button>
 
             {isProfileOpen ? (
               <div className="absolute right-0 mt-2 w-48 rounded-md border border-slate-200 bg-white py-2 shadow-lg">
-                <button className="block w-full px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 hover:text-[#1a365d]">
-                  Account
-                </button>
-                <button className="block w-full px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 hover:text-[#1a365d]">
-                  Team Settings
-                </button>
-                <button className="block w-full px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 hover:text-[#1a365d]">
+                <div className="border-b border-slate-100 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Signed in as
+                  </p>
+                  <p className="mt-1 truncate text-sm font-bold text-slate-900">
+                    {authenticatedUser || "User"}
+                  </p>
+                </div>
+                <button
+                  className="block w-full px-4 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-[#1a365d]"
+                  onClick={onLogout}
+                  type="button"
+                >
                   Sign out
                 </button>
               </div>
