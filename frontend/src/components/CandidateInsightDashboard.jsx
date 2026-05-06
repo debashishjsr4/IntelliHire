@@ -1,17 +1,40 @@
-import { useState } from "react";
-import { parseResume } from "../lib/api.js";
+import { useCallback, useEffect, useState } from "react";
+import { fetchParsedCandidates, parseResume } from "../lib/api.js";
+import CandidateDirectory from "./dashboard/CandidateDirectory.jsx";
 import DashboardHeader from "./dashboard/DashboardHeader.jsx";
 import InsightsGrid from "./dashboard/InsightsGrid.jsx";
 import Sidebar from "./dashboard/Sidebar.jsx";
 import UploadPanel from "./dashboard/UploadPanel.jsx";
 
 const CandidateInsightDashboard = () => {
+  const [activeView, setActiveView] = useState("dashboard");
+  const [candidates, setCandidates] = useState([]);
+  const [candidatesError, setCandidatesError] = useState("");
+  const [isCandidatesLoading, setIsCandidatesLoading] = useState(false);
   const [file, setFile] = useState(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const loadCandidates = useCallback(async () => {
+    setCandidatesError("");
+    setIsCandidatesLoading(true);
+
+    try {
+      const parsedCandidates = await fetchParsedCandidates();
+      setCandidates(parsedCandidates);
+    } catch (requestError) {
+      setCandidatesError(requestError.message);
+    } finally {
+      setIsCandidatesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCandidates();
+  }, [loadCandidates]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -34,6 +57,13 @@ const CandidateInsightDashboard = () => {
       // The API handles PDF extraction, LLM analysis, and MongoDB persistence.
       const data = await parseResume({ file, name, email });
       setResult(data);
+
+      if (data.candidate?._id) {
+        setCandidates((currentCandidates) => [
+          data.candidate,
+          ...currentCandidates.filter((candidate) => candidate._id !== data.candidate._id)
+        ]);
+      }
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -43,26 +73,44 @@ const CandidateInsightDashboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950">
-      <Sidebar />
+      <Sidebar
+        activeView={activeView}
+        candidateCount={candidates.length}
+        onViewChange={setActiveView}
+      />
 
       <div className="lg:pl-72">
-        <DashboardHeader candidateName={name || result?.candidate?.name} matchScore={85} />
+        <DashboardHeader
+          candidateName={name || result?.candidate?.name}
+          matchScore={85}
+          subtitle={activeView === "candidates" ? "Candidate Database" : "Candidate Insight Dashboard"}
+          title={activeView === "candidates" ? "Parsed CV Library" : undefined}
+        />
 
-        <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:px-8">
-          <UploadPanel
-            email={email}
-            error={error}
-            file={file}
-            isLoading={isLoading}
-            name={name}
-            onEmailChange={setEmail}
-            onFileChange={setFile}
-            onNameChange={setName}
-            onSubmit={handleSubmit}
+        {activeView === "candidates" ? (
+          <CandidateDirectory
+            candidates={candidates}
+            error={candidatesError}
+            isLoading={isCandidatesLoading}
+            onRefresh={loadCandidates}
           />
+        ) : (
+          <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:px-8">
+            <UploadPanel
+              email={email}
+              error={error}
+              file={file}
+              isLoading={isLoading}
+              name={name}
+              onEmailChange={setEmail}
+              onFileChange={setFile}
+              onNameChange={setName}
+              onSubmit={handleSubmit}
+            />
 
-          <InsightsGrid isLoading={isLoading} result={result} />
-        </main>
+            <InsightsGrid isLoading={isLoading} result={result} />
+          </main>
+        )}
       </div>
     </div>
   );

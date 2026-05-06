@@ -2,7 +2,12 @@ import { Bell, ChevronDown, UserRound } from "lucide-react";
 import { useState } from "react";
 import MatchScore from "./MatchScore.jsx";
 
-const DashboardHeader = ({ candidateName, matchScore }) => {
+const DashboardHeader = ({
+  candidateName,
+  matchScore,
+  subtitle = "Candidate Insight Dashboard",
+  title
+}) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   return (
@@ -10,10 +15,10 @@ const DashboardHeader = ({ candidateName, matchScore }) => {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <div className="min-w-0">
           <p className="text-sm font-semibold uppercase tracking-wide text-[#1a365d]">
-            Candidate Insight Dashboard
+            {subtitle}
           </p>
           <h2 className="mt-1 truncate text-2xl font-bold tracking-normal text-slate-950">
-            {candidateName || "Resume Intelligence"}
+            {title || candidateName || "Resume Intelligence"}
           </h2>
         </div>
 
@@ -62,4 +67,3 @@ const DashboardHeader = ({ candidateName, matchScore }) => {
 };
 
 export default DashboardHeader;
-

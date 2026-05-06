@@ -1,6 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
-import { parseResume } from "../controllers/resumeController.js";
+import { getParsedCandidates, parseResume } from "../controllers/resumeController.js";
 
 const router = Router();
 
@@ -18,6 +18,7 @@ const upload = multer({
   }
 });
 
+router.get("/candidates", getParsedCandidates);
 router.post("/parse", upload.single("resume"), parseResume);
 
 export default router;

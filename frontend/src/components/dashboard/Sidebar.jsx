@@ -1,13 +1,13 @@
 import { BriefcaseBusiness, LayoutDashboard, Settings, UsersRound } from "lucide-react";
 
 const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, isActive: true },
-  { label: "Jobs", icon: BriefcaseBusiness },
-  { label: "Candidates", icon: UsersRound },
-  { label: "Settings", icon: Settings }
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "jobs", label: "Jobs", icon: BriefcaseBusiness, isDisabled: true },
+  { id: "candidates", label: "Candidates", icon: UsersRound },
+  { id: "settings", label: "Settings", icon: Settings, isDisabled: true }
 ];
 
-const Sidebar = () => {
+const Sidebar = ({ activeView, candidateCount, onViewChange }) => {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-slate-800 bg-[#1a365d] lg:block">
       <div className="flex h-full flex-col">
@@ -23,20 +23,25 @@ const Sidebar = () => {
         <nav className="flex-1 space-y-1 px-4 py-5">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const isActive = activeView === item.id;
 
             return (
-              <a
-                className={`flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium transition duration-200 ${
-                  item.isActive
+              <button
+                className={`flex w-full items-center gap-3 rounded-md px-3 py-3 text-left text-sm font-medium transition duration-200 ${
+                  isActive
                     ? "bg-white text-[#1a365d] shadow-sm"
+                    : item.isDisabled
+                      ? "cursor-not-allowed text-slate-400"
                     : "text-slate-200 hover:bg-white/10 hover:text-white"
                 }`}
-                href="#"
+                disabled={item.isDisabled}
                 key={item.label}
+                onClick={() => onViewChange(item.id)}
+                type="button"
               >
                 <Icon className="h-5 w-5" aria-hidden="true" />
                 {item.label}
-              </a>
+              </button>
             );
           })}
         </nav>
@@ -46,7 +51,7 @@ const Sidebar = () => {
             Hiring Pipeline
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-100">
-            24 active candidates
+            {candidateCount} parsed candidates
           </p>
         </div>
       </div>
@@ -55,4 +60,3 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
-

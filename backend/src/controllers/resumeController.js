@@ -41,3 +41,12 @@ export const parseResume = asyncHandler(async (req, res) => {
     experience_timeline: analysis.experience_timeline
   });
 });
+
+export const getParsedCandidates = asyncHandler(async (_req, res) => {
+  const candidates = await Candidate.find({})
+    .sort({ createdAt: -1 })
+    .select("name email extracted_skills resume_url summary experience_timeline createdAt updatedAt")
+    .lean();
+
+  res.status(200).json({ candidates });
+});
