@@ -113,9 +113,9 @@ const CandidateDirectory = ({
   };
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      <section className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
-        <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <main className="mx-auto w-full max-w-7xl overflow-x-hidden px-3 py-5 sm:px-6 sm:py-6 lg:px-8">
+      <section className="grid min-w-0 gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
+        <div className="min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -183,7 +183,7 @@ const CandidateDirectory = ({
 
                 return (
                   <button
-                    className={`w-full rounded-md border px-4 py-3 text-left transition duration-200 ${
+                    className={`w-full min-w-0 rounded-md border px-4 py-3 text-left transition duration-200 ${
                       isSelected
                         ? "border-[#1a365d] bg-slate-50"
                         : "border-transparent hover:border-slate-200 hover:bg-slate-50"
@@ -205,9 +205,9 @@ const CandidateDirectory = ({
                         {(candidate.skill_scores || []).length} skills
                       </span>
                     </div>
-                    <p className="mt-3 flex items-center gap-2 text-xs font-medium text-slate-500">
-                      <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
-                      {formatTimestamp(candidate.createdAt)}
+                    <p className="mt-3 flex min-w-0 items-center gap-2 text-xs font-medium text-slate-500">
+                      <CalendarClock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      <span className="min-w-0 truncate">{formatTimestamp(candidate.createdAt)}</span>
                     </p>
                   </button>
                 );
@@ -216,9 +216,9 @@ const CandidateDirectory = ({
           </div>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           {selectedCandidate ? (
-            <div>
+            <div className="min-w-0">
               <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold uppercase tracking-wide text-[#1a365d]">
@@ -227,21 +227,25 @@ const CandidateDirectory = ({
                   <h3 className="mt-1 truncate text-2xl font-bold tracking-normal text-slate-950">
                     {selectedCandidate.name || "Not available"}
                   </h3>
-                  <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-600">
-                    <span className="inline-flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-[#1a365d]" aria-hidden="true" />
-                      {selectedCandidate.email || "Not available"}
+                  <div className="mt-3 flex min-w-0 flex-wrap gap-3 text-sm text-slate-600">
+                    <span className="inline-flex max-w-full min-w-0 items-center gap-2">
+                      <Mail className="h-4 w-4 shrink-0 text-[#1a365d]" aria-hidden="true" />
+                      <span className="min-w-0 truncate">
+                        {selectedCandidate.email || "Not available"}
+                      </span>
                     </span>
-                    <span className="inline-flex items-center gap-2">
-                      <CalendarClock className="h-4 w-4 text-[#1a365d]" aria-hidden="true" />
-                      Uploaded {formatTimestamp(selectedCandidate.createdAt)}
+                    <span className="inline-flex max-w-full min-w-0 items-center gap-2">
+                      <CalendarClock className="h-4 w-4 shrink-0 text-[#1a365d]" aria-hidden="true" />
+                      <span className="min-w-0 truncate">
+                        Uploaded {formatTimestamp(selectedCandidate.createdAt)}
+                      </span>
                     </span>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
-                    <FileText className="h-4 w-4" aria-hidden="true" />
-                    <span className="max-w-48 truncate">
+                <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+                  <div className="inline-flex max-w-full min-w-0 items-center gap-2 rounded-md bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
+                    <FileText className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 max-w-full truncate sm:max-w-48">
                       {selectedCandidate.resume_url || "Resume file"}
                     </span>
                   </div>
@@ -258,35 +262,35 @@ const CandidateDirectory = ({
               </div>
 
               <div className="space-y-6 py-6">
-                <section className="max-w-4xl">
+                <section className="max-w-4xl min-w-0">
                   <h4 className="text-sm font-bold uppercase tracking-wide text-slate-500">
                     Summary
                   </h4>
-                  <p className="mt-3 text-sm leading-6 text-slate-700">
+                  <p className="mt-3 break-words text-sm leading-6 text-slate-700">
                     {selectedCandidate.summary || "No summary was extracted for this candidate."}
                   </p>
                 </section>
 
-                <section className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
+                <section className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4">
+                  <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
                       <h4 className="text-sm font-bold uppercase tracking-wide text-slate-500">
                         Skills
                       </h4>
-                      <p className="mt-1 text-sm leading-6 text-slate-600">
+                      <p className="mt-1 break-words text-sm leading-6 text-slate-600">
                         AI-scored skills with resume evidence for each rating.
                       </p>
                     </div>
-                    <div className="lg:w-80">
+                    <div className="min-w-0 lg:w-80">
                       <SkillScoreGuide compact />
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                  <div className="mt-4 grid min-w-0 gap-3 xl:grid-cols-2">
                     {(selectedCandidate.skill_scores || []).length ? (
                       selectedCandidate.skill_scores.map((skill) => (
                         <div
-                          className="rounded-md border border-slate-200 bg-white p-4 shadow-sm"
+                          className="min-w-0 rounded-md border border-slate-200 bg-white p-4 shadow-sm"
                           key={skill.name}
                         >
                           <div className="mb-2 flex items-start justify-between gap-3">
@@ -311,7 +315,7 @@ const CandidateDirectory = ({
                             />
                           </div>
                           {skill.evidence ? (
-                            <p className="mt-2 text-xs leading-5 text-slate-500">
+                            <p className="mt-2 break-words text-xs leading-5 text-slate-500">
                               {skill.evidence}
                             </p>
                           ) : null}
@@ -331,19 +335,19 @@ const CandidateDirectory = ({
                 {(selectedCandidate.experience_timeline || []).length ? (
                   <div className="mt-4 space-y-4">
                     {selectedCandidate.experience_timeline.map((item, index) => (
-                      <div className="rounded-md border border-slate-200 bg-slate-50 p-4" key={`${item.title}-${index}`}>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                          <div>
-                            <h5 className="text-sm font-bold text-slate-950">{item.title}</h5>
-                            <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <div className="min-w-0 rounded-md border border-slate-200 bg-slate-50 p-4" key={`${item.title}-${index}`}>
+                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <h5 className="break-words text-sm font-bold text-slate-950">{item.title}</h5>
+                            <p className="mt-1 break-words text-xs font-semibold uppercase tracking-wide text-slate-500">
                               {item.company}
                             </p>
                           </div>
-                          <span className="w-fit rounded-md bg-white px-2 py-1 text-xs font-semibold text-slate-600">
+                          <span className="w-fit max-w-full break-words rounded-md bg-white px-2 py-1 text-xs font-semibold text-slate-600">
                             {item.period}
                           </span>
                         </div>
-                        <p className="mt-3 text-sm leading-6 text-slate-600">{item.detail}</p>
+                        <p className="mt-3 break-words text-sm leading-6 text-slate-600">{item.detail}</p>
                       </div>
                     ))}
                   </div>

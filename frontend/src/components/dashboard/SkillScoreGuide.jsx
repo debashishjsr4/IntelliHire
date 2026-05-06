@@ -10,26 +10,26 @@ const scoreBands = [
 
 const SkillScoreGuide = ({ compact = false }) => {
   return (
-    <details className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-slate-700 marker:hidden">
-        <Info className="h-4 w-4 text-[#1a365d]" aria-hidden="true" />
-        Skill score guide
+    <details className="min-w-0 max-w-full overflow-hidden rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+      <summary className="flex min-w-0 cursor-pointer list-none items-center gap-2 text-sm font-semibold text-slate-700 marker:hidden">
+        <Info className="h-4 w-4 shrink-0 text-[#1a365d]" aria-hidden="true" />
+        <span className="min-w-0 truncate">Skill score guide</span>
       </summary>
 
-      <div className="mt-3 space-y-2">
-        <p className="text-xs leading-5 text-slate-500">
+      <div className="mt-3 min-w-0 space-y-2">
+        <p className="break-words text-xs leading-5 text-slate-500">
           Scores are based on resume evidence found by the AI, not a manual test.
         </p>
-        <div className={compact ? "space-y-2" : "grid gap-2 sm:grid-cols-2"}>
+        <div className={compact ? "min-w-0 space-y-2" : "grid min-w-0 gap-2 sm:grid-cols-2"}>
           {scoreBands.map((band) => (
-            <div className="rounded-md bg-white px-3 py-2 ring-1 ring-slate-200" key={band.range}>
+            <div className="min-w-0 rounded-md bg-white px-3 py-2 ring-1 ring-slate-200" key={band.range}>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs font-bold text-[#1a365d]">{band.range}%</span>
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   {band.label}
                 </span>
               </div>
-              <p className="mt-1 text-xs leading-5 text-slate-500">{band.detail}</p>
+              <p className="mt-1 break-words text-xs leading-5 text-slate-500">{band.detail}</p>
             </div>
           ))}
         </div>

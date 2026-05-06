@@ -6,5 +6,10 @@ body {
   margin: 0;
   min-width: 320px;
   background: #f8fafc;
+  overflow-x: hidden;
 }
 
+#root {
+  min-width: 0;
+  overflow-x: hidden;
+}

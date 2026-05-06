@@ -68,11 +68,17 @@ const Sidebar = ({ activeView, candidateCount, onViewChange }) => {
             <p className="mt-2 text-sm leading-6 text-slate-100">
               {candidateCount} parsed candidates
             </p>
+            <p className="mt-4 text-xs leading-5 text-slate-300">
+              © Subhasis Pradhan
+            </p>
           </div>
         </div>
       </aside>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 shadow-[0_-10px_30px_rgba(15,23,42,0.10)] backdrop-blur lg:hidden">
+        <p className="mb-1 text-center text-[11px] font-medium text-slate-400">
+          © Subhasis Pradhan
+        </p>
         <div className="mx-auto flex max-w-md items-center gap-1">
           {navItems.map((item) => renderNavItem(item, "mobile"))}
         </div>
