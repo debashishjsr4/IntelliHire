@@ -30,6 +30,14 @@ For classroom demos without paid AI quota, set this in `backend/.env`:
 LLM_PROVIDER=mock
 ```
 
+If Gemini or OpenAI quota is exhausted but you still want uploads to complete during demos, keep your main provider and add:
+
+```env
+LLM_FALLBACK_PROVIDER=mock
+```
+
+The mock fallback is illustrative and should not be used for real candidate evaluation.
+
 Core endpoint:
 
 ```http
@@ -41,7 +49,8 @@ resume_url=<optional hosted resume URL>
 ```
 
 Candidate name and email are extracted from the uploaded CV. If no email address is found, the saved candidate record uses `Not available`.
-Skill percentages are scored by the configured LLM from resume evidence and stored with the candidate as `skill_scores`, including the skill name, score, derived level, and evidence. The level is derived from the score bands shown in the UI guide so labels stay consistent.
+Skill percentages are scored conservatively by the configured LLM from explicit resume evidence and stored with the candidate as `skill_scores`, including the skill name, score, derived level, score factors, and evidence. The extracted skill profile keeps up to 10 skills, including strengths as well as weakly supported CV mentions, so recruiters can distinguish real strengths from low-evidence keywords. The UI groups skills into strengths, moderate evidence, and low-evidence mentions. The scoring prompt weighs direct application, complexity, ownership, impact, recency, and evidence quality, then applies caps for shallow or vague CV evidence.
+Each successfully parsed CV also stores `profile_score`, a 0-100 signal for how strong the candidate appears from the CV claims in their own area of experience. It is not a job-match score unless a job description is provided. The score weighs professional impact, role complexity, ownership, technical depth, career progression, evidence specificity, and recency. Scores above 90 should be rare and reserved for exceptional achievements or repeated high-impact delivery.
 
 ## Frontend
 
@@ -62,6 +71,8 @@ Set these environment variables in Vercel:
 
 - `MONGODB_URI`
 - `LLM_PROVIDER=gemini`
+- `LLM_FALLBACK_PROVIDER=mock` optional demo fallback when provider quota is exhausted.
+- `LLM_TIMEOUT_MS=50000`
 - `GEMINI_API_KEY`
 - `GEMINI_MODEL=gemini-2.5-flash`
 - `CLIENT_ORIGIN=https://your-vercel-app.vercel.app`

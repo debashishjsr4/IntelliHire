@@ -17,6 +17,7 @@ const CandidateInsightDashboard = () => {
   const [deleteCandidateError, setDeleteCandidateError] = useState("");
   const [deletingCandidateId, setDeletingCandidateId] = useState("");
   const [isCandidatesLoading, setIsCandidatesLoading] = useState(false);
+  const [selectedDirectoryCandidate, setSelectedDirectoryCandidate] = useState(null);
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -48,6 +49,9 @@ const CandidateInsightDashboard = () => {
       await deleteParsedCandidate(candidateId);
       setCandidates((currentCandidates) =>
         currentCandidates.filter((candidate) => candidate._id !== candidateId)
+      );
+      setSelectedDirectoryCandidate((currentCandidate) =>
+        currentCandidate?._id === candidateId ? null : currentCandidate
       );
     } catch (requestError) {
       setDeleteCandidateError(requestError.message);
@@ -92,6 +96,11 @@ const CandidateInsightDashboard = () => {
     }
   };
 
+  const activeProfileScore =
+    activeView === "candidates"
+      ? selectedDirectoryCandidate?.profile_score
+      : result?.candidate?.profile_score || result?.profile_score;
+
   return (
     <div className="min-h-screen bg-slate-100 pb-24 text-slate-950 lg:pb-0">
       <Sidebar
@@ -103,7 +112,7 @@ const CandidateInsightDashboard = () => {
       <div className="lg:pl-72">
         <DashboardHeader
           candidateName={result?.candidate?.name}
-          matchScore={85}
+          profileScore={activeProfileScore}
           subtitle={activeView === "candidates" ? "Candidate Database" : "Candidate Insight Dashboard"}
           title={activeView === "candidates" ? "Parsed CV Library" : undefined}
         />
@@ -118,6 +127,7 @@ const CandidateInsightDashboard = () => {
             onClearDeleteError={() => setDeleteCandidateError("")}
             onDeleteCandidate={handleDeleteCandidate}
             onRefresh={loadCandidates}
+            onSelectedCandidateChange={setSelectedDirectoryCandidate}
           />
         ) : (
           <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:px-8">

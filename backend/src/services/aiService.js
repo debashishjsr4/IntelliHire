@@ -6,14 +6,38 @@ The JSON shape must be:
 {
   "candidate_name": "Candidate full name if present, otherwise Not available",
   "email": "Candidate email if present, otherwise Not available",
-  "skills": ["skill 1", "skill 2", "skill 3", "skill 4", "skill 5"],
+  "skills": ["skill 1", "skill 2", "skill 3", "skill 4", "skill 5", "skill 6"],
   "skill_scores": [
     {
       "name": "skill name",
       "score": 85,
+      "score_factors": {
+        "direct_application": 70,
+        "complexity": 60,
+        "ownership": 50,
+        "impact": 40,
+        "recency": 70,
+        "evidence_quality": 60
+      },
       "evidence": "Short resume-based reason for this score"
     }
   ],
+  "profile_score": {
+    "score": 72,
+    "label": "Solid",
+    "score_factors": {
+      "professional_impact": 55,
+      "role_complexity": 60,
+      "ownership": 50,
+      "technical_depth": 65,
+      "career_progression": 50,
+      "evidence_specificity": 60,
+      "recency": 70
+    },
+    "rationale": "Short resume-based explanation of how strong the candidate appears.",
+    "strengths": ["Specific strength from the CV"],
+    "caveats": ["Specific limitation or uncertainty from the CV"]
+  },
   "summary": "One sentence summary of the candidate.",
   "experience_timeline": [
     {
@@ -29,15 +53,63 @@ Rules:
 - Extract the candidate name and email from the resume text only.
 - If the candidate name is missing, set candidate_name to "Not available".
 - If the email address is missing, set email to "Not available".
-- Include the candidate's top 5 technical skills in both skills and skill_scores.
+- Include 5 to 10 technical skills in both skills and skill_scores when available.
 - The skills array must contain the same skill names, in the same order, as skill_scores.
-- Score each skill from 0 to 100 using only resume evidence.
-- Use 90-100 for deep repeated professional use with ownership or leadership.
-- Use 75-89 for strong practical job or major project usage.
-- Use 55-74 for moderate usage with limited detail.
-- Use 30-54 for mentioned skills with weak evidence.
-- Do not include skills below 30 unless they are central to the resume.
+- Do not include only strengths. Include a balanced skill profile:
+  - 4 to 6 primary skills with the best evidence.
+  - 1 to 3 moderate skills with some evidence.
+  - Up to 3 weakly supported skills explicitly mentioned in the CV, even if they score as low as 20-40.
+- Include low-score skills when they are explicitly mentioned but not substantiated, because recruiters need to distinguish mentions from strengths.
+- Order skill_scores by score descending after applying evidence caps.
+- Score each skill from 0 to 100 using only explicit resume evidence. Be skeptical and evidence-first.
+- Do not infer mastery from a skills list, keyword stuffing, certifications, training, or generic claims.
+- For each skill, first score these factors from 0 to 100:
+  - direct_application: whether the CV shows the candidate actually used the skill to deliver work.
+  - complexity: whether the work involved non-trivial implementation, design, debugging, migration, scaling, integration, architecture, or domain complexity.
+  - ownership: whether the candidate personally owned delivery, decisions, design, production support, or leadership for the skill.
+  - impact: whether the CV shows measurable or business/user impact, production outcomes, efficiency gains, revenue/cost impact, reliability, or adoption.
+  - recency: whether the skill was used recently in real work, not only old/academic/training contexts.
+  - evidence_quality: how specific and credible the CV evidence is for this exact skill.
+- The final score should be approximately:
+  direct_application 30%, complexity 20%, ownership 20%, impact 15%, recency 10%, evidence_quality 5%.
+- Apply caps after estimating the weighted score:
+  - If the skill only appears in a skills/tools list, cap at 45.
+  - If the CV only says "worked with", "exposure to", "familiar with", or similar vague phrasing, cap at 55.
+  - If there is one project or role mention but no detail about what the candidate built or owned, cap at 60.
+  - If the candidate used the skill but with limited scope, unclear ownership, or no outcomes, cap at 70.
+  - If there is no measurable impact or production/business outcome, cap at 78.
+  - If individual ownership is unclear, cap at 75.
+  - If direct exposure appears to be around 2 years or less, cap at 70 unless there is unusually strong project ownership and concrete impact.
+  - If direct exposure appears to be around 1 year or less, cap at 60 unless there is unusually strong evidence.
+  - Do not score above 85 unless the CV shows substantial direct application, complex work, clear ownership, and impact.
+  - Do not score above 90 unless the CV shows exceptional evidence: architecture/strategy leadership, repeated delivery, recent use, and concrete outcomes.
+- Most CVs should have no skills above 85. A 95+ score should be extremely rare.
+- Do not give more than one skill above 85 unless the CV is genuinely exceptional for multiple skills.
+- Evidence text must briefly explain the main positive evidence and the main limiting factor.
 - Keep evidence short and specific to what the resume says.
+- Also score profile_score from 0 to 100 as the candidate's overall professional strength based only on CV claims.
+- profile_score is not a job match score and must not assume a specific job description.
+- profile_score means: if a role matches this candidate's actual area of experience, how strong does the candidate look from the CV evidence?
+- For profile_score, score these factors from 0 to 100:
+  - professional_impact: measurable outcomes, business/user value, delivery results, awards, or exceptional achievements.
+  - role_complexity: difficulty of roles, systems, projects, domain, scale, ambiguity, or responsibility.
+  - ownership: individual accountability, leadership, decision-making, mentoring, production ownership, or end-to-end delivery.
+  - technical_depth: depth of practical expertise in the candidate's stated area, not breadth of keywords.
+  - career_progression: growth in scope, responsibility, seniority, or quality of work over time.
+  - evidence_specificity: how concrete and credible the CV evidence is, including numbers, scope, outcomes, and named work.
+  - recency: whether the strongest evidence is recent and professionally relevant.
+- Calculate profile_score approximately from those factors, with professional_impact, ownership, role_complexity, technical_depth, and evidence_specificity carrying the most weight.
+- Apply conservative profile_score caps:
+  - If the CV is mostly responsibilities with no outcomes or achievements, cap profile_score at 68.
+  - If impact is vague or unmeasured, cap profile_score at 75.
+  - If ownership is unclear, cap profile_score at 72.
+  - If the candidate appears junior or has narrow exposure, cap profile_score at 65 unless there are unusually strong achievements.
+  - If evidence is mostly keyword lists or generic claims, cap profile_score at 58.
+  - Do not score above 85 unless the CV shows clear ownership, complex work, strong depth, and concrete impact.
+  - Do not score above 90 unless the CV shows exceptional achievements, repeated high-impact delivery, or unusually strong professional success.
+- Most candidates should be between 45 and 78. 90+ should be rare.
+- profile_score label must be one of: "Emerging", "Solid", "Strong", "Exceptional".
+- profile_score strengths and caveats must be grounded only in the resume text.
 - Extract 3 to 5 real career or education milestones from the resume.
 - Use only information present in the resume text for the timeline.
 - If dates are missing, set period to "Not specified".
@@ -52,7 +124,15 @@ ${resumeText}
 const resumeAnalysisSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["candidate_name", "email", "skills", "skill_scores", "summary", "experience_timeline"],
+  required: [
+    "candidate_name",
+    "email",
+    "skills",
+    "skill_scores",
+    "profile_score",
+    "summary",
+    "experience_timeline"
+  ],
   properties: {
     candidate_name: {
       type: "string"
@@ -62,20 +142,20 @@ const resumeAnalysisSchema = {
     },
     skills: {
       type: "array",
-      minItems: 5,
-      maxItems: 5,
+      minItems: 0,
+      maxItems: 10,
       items: {
         type: "string"
       }
     },
     skill_scores: {
       type: "array",
-      minItems: 5,
-      maxItems: 5,
+      minItems: 0,
+      maxItems: 10,
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["name", "score", "evidence"],
+        required: ["name", "score", "score_factors", "evidence"],
         properties: {
           name: {
             type: "string"
@@ -85,7 +165,136 @@ const resumeAnalysisSchema = {
             minimum: 0,
             maximum: 100
           },
+          score_factors: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "direct_application",
+              "complexity",
+              "ownership",
+              "impact",
+              "recency",
+              "evidence_quality"
+            ],
+            properties: {
+              direct_application: {
+                type: "integer",
+                minimum: 0,
+                maximum: 100
+              },
+              complexity: {
+                type: "integer",
+                minimum: 0,
+                maximum: 100
+              },
+              ownership: {
+                type: "integer",
+                minimum: 0,
+                maximum: 100
+              },
+              impact: {
+                type: "integer",
+                minimum: 0,
+                maximum: 100
+              },
+              recency: {
+                type: "integer",
+                minimum: 0,
+                maximum: 100
+              },
+              evidence_quality: {
+                type: "integer",
+                minimum: 0,
+                maximum: 100
+              }
+            }
+          },
           evidence: {
+            type: "string"
+          }
+        }
+      }
+    },
+    profile_score: {
+      type: "object",
+      additionalProperties: false,
+      required: ["score", "label", "score_factors", "rationale", "strengths", "caveats"],
+      properties: {
+        score: {
+          type: "integer",
+          minimum: 0,
+          maximum: 100
+        },
+        label: {
+          type: "string",
+          enum: ["Emerging", "Solid", "Strong", "Exceptional"]
+        },
+        score_factors: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "professional_impact",
+            "role_complexity",
+            "ownership",
+            "technical_depth",
+            "career_progression",
+            "evidence_specificity",
+            "recency"
+          ],
+          properties: {
+            professional_impact: {
+              type: "integer",
+              minimum: 0,
+              maximum: 100
+            },
+            role_complexity: {
+              type: "integer",
+              minimum: 0,
+              maximum: 100
+            },
+            ownership: {
+              type: "integer",
+              minimum: 0,
+              maximum: 100
+            },
+            technical_depth: {
+              type: "integer",
+              minimum: 0,
+              maximum: 100
+            },
+            career_progression: {
+              type: "integer",
+              minimum: 0,
+              maximum: 100
+            },
+            evidence_specificity: {
+              type: "integer",
+              minimum: 0,
+              maximum: 100
+            },
+            recency: {
+              type: "integer",
+              minimum: 0,
+              maximum: 100
+            }
+          }
+        },
+        rationale: {
+          type: "string"
+        },
+        strengths: {
+          type: "array",
+          minItems: 0,
+          maxItems: 4,
+          items: {
+            type: "string"
+          }
+        },
+        caveats: {
+          type: "array",
+          minItems: 0,
+          maxItems: 4,
+          items: {
             type: "string"
           }
         }
@@ -175,11 +384,79 @@ const getScoreLevel = (score) => {
   return "Low evidence";
 };
 
+const normalizeScoreFactors = (scoreFactors) => {
+  const source = scoreFactors && typeof scoreFactors === "object" ? scoreFactors : {};
+
+  return {
+    direct_application: normalizeScore(source.direct_application),
+    complexity: normalizeScore(source.complexity),
+    ownership: normalizeScore(source.ownership),
+    impact: normalizeScore(source.impact),
+    recency: normalizeScore(source.recency),
+    evidence_quality: normalizeScore(source.evidence_quality)
+  };
+};
+
+const getProfileScoreLabel = (score) => {
+  if (score >= 90) {
+    return "Exceptional";
+  }
+
+  if (score >= 75) {
+    return "Strong";
+  }
+
+  if (score >= 55) {
+    return "Solid";
+  }
+
+  return "Emerging";
+};
+
+const normalizeProfileScoreFactors = (scoreFactors) => {
+  const source = scoreFactors && typeof scoreFactors === "object" ? scoreFactors : {};
+
+  return {
+    professional_impact: normalizeScore(source.professional_impact),
+    role_complexity: normalizeScore(source.role_complexity),
+    ownership: normalizeScore(source.ownership),
+    technical_depth: normalizeScore(source.technical_depth),
+    career_progression: normalizeScore(source.career_progression),
+    evidence_specificity: normalizeScore(source.evidence_specificity),
+    recency: normalizeScore(source.recency)
+  };
+};
+
+const normalizeStringList = (value) =>
+  Array.isArray(value)
+    ? value.filter((item) => typeof item === "string" && item.trim()).slice(0, 4)
+    : [];
+
+const normalizeProfileScore = (profileScore) => {
+  const source = profileScore && typeof profileScore === "object" ? profileScore : {};
+  const score = normalizeScore(source.score);
+  const label =
+    typeof source.label === "string" &&
+    ["Emerging", "Solid", "Strong", "Exceptional"].includes(source.label)
+      ? source.label
+      : getProfileScoreLabel(score);
+
+  return {
+    version: 1,
+    score,
+    label,
+    score_factors: normalizeProfileScoreFactors(source.score_factors),
+    rationale: typeof source.rationale === "string" ? source.rationale : "",
+    strengths: normalizeStringList(source.strengths),
+    caveats: normalizeStringList(source.caveats)
+  };
+};
+
 const normalizeSkillScores = (skillScores, skills) => {
   if (Array.isArray(skillScores) && skillScores.length) {
     return skillScores
       .filter((skill) => skill && typeof skill === "object" && typeof skill.name === "string")
-      .slice(0, 5)
+      .slice(0, 10)
       .map((skill) => {
         const score = normalizeScore(skill.score);
 
@@ -187,6 +464,7 @@ const normalizeSkillScores = (skillScores, skills) => {
           name: skill.name.trim(),
           score,
           level: getScoreLevel(score),
+          score_factors: normalizeScoreFactors(skill.score_factors),
           evidence: typeof skill.evidence === "string" ? skill.evidence : ""
         };
       })
@@ -199,9 +477,9 @@ const normalizeSkillScores = (skillScores, skills) => {
 const normalizeAnalysis = (analysis) => {
   const skillScores = normalizeSkillScores(analysis.skill_scores, analysis.skills);
   const skillNames = skillScores.length
-    ? skillScores.map((skill) => skill.name)
+      ? skillScores.map((skill) => skill.name)
     : Array.isArray(analysis.skills)
-      ? analysis.skills.filter((skill) => typeof skill === "string").slice(0, 5)
+      ? analysis.skills.filter((skill) => typeof skill === "string").slice(0, 10)
       : [];
 
   return {
@@ -209,6 +487,7 @@ const normalizeAnalysis = (analysis) => {
     email: typeof analysis.email === "string" ? analysis.email : "",
     skills: skillNames,
     skill_scores: skillScores,
+    profile_score: normalizeProfileScore(analysis.profile_score),
     summary: typeof analysis.summary === "string" ? analysis.summary : "",
     experience_timeline: Array.isArray(analysis.experience_timeline)
       ? analysis.experience_timeline
@@ -231,9 +510,15 @@ const getProviderErrorMessage = async (response, providerName) => {
     const parsedError = JSON.parse(errorBody);
     const code = parsedError.error?.code;
     const message = parsedError.error?.message;
+    const status = parsedError.error?.status;
 
-    if (code === "insufficient_quota") {
-      return `${providerName} quota is exhausted. Add billing credits or increase the project monthly limit, then retry. For classroom demos, set LLM_PROVIDER=mock in backend/.env.`;
+    if (
+      response.status === 429 ||
+      code === "insufficient_quota" ||
+      status === "RESOURCE_EXHAUSTED" ||
+      /quota|rate limit/i.test(message || "")
+    ) {
+      return `${providerName} quota is exhausted. Add billing credits or increase the provider quota, then retry. For demos, set LLM_FALLBACK_PROVIDER=mock or switch LLM_PROVIDER=mock.`;
     }
 
     return `${providerName} request failed: ${message || errorBody}`;
@@ -242,7 +527,16 @@ const getProviderErrorMessage = async (response, providerName) => {
   }
 };
 
-const getProviderTimeoutSignal = () => AbortSignal.timeout(25_000);
+const isQuotaError = (error) => /quota is exhausted|quota exceeded|rate limit/i.test(error.message || "");
+
+const getProviderTimeoutSignal = () => {
+  const configuredTimeout = Number.parseInt(process.env.LLM_TIMEOUT_MS || "", 10);
+  const timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0
+    ? configuredTimeout
+    : 50_000;
+
+  return AbortSignal.timeout(Math.min(timeoutMs, 55_000));
+};
 
 const analyzeWithMock = async (resumeText) => {
   const commonSkillKeywords = [
@@ -263,7 +557,18 @@ const analyzeWithMock = async (resumeText) => {
     lowerResumeText.includes(skill.toLowerCase())
   );
 
-  const skills = [...new Set([...detectedSkills, "JavaScript", "Node.js", "React", "MongoDB", "REST APIs"])].slice(0, 5);
+  const skills = [
+    ...new Set([
+      ...detectedSkills,
+      "JavaScript",
+      "Node.js",
+      "React",
+      "MongoDB",
+      "REST APIs",
+      "SQL",
+      "Docker"
+    ])
+  ].slice(0, 8);
 
   return {
     candidate_name: "Not available",
@@ -271,10 +576,35 @@ const analyzeWithMock = async (resumeText) => {
     skills,
     skill_scores: skills.map((skill, index) => ({
       name: skill,
-      score: Math.min(88, 68 + index * 4),
-      level: getScoreLevel(Math.min(88, 68 + index * 4)),
+      score: Math.min(76, 52 + index * 6),
+      level: getScoreLevel(Math.min(76, 52 + index * 6)),
+      score_factors: {
+        direct_application: Math.min(76, 52 + index * 6),
+        complexity: 45,
+        ownership: 40,
+        impact: 30,
+        recency: 50,
+        evidence_quality: 35
+      },
       evidence: "Mock provider generated this score because no live LLM analysis is active."
     })),
+    profile_score: {
+      version: 1,
+      score: 58,
+      label: "Solid",
+      score_factors: {
+        professional_impact: 40,
+        role_complexity: 50,
+        ownership: 45,
+        technical_depth: 58,
+        career_progression: 45,
+        evidence_specificity: 35,
+        recency: 55
+      },
+      rationale: "Mock provider uses a conservative default profile score because no live LLM analysis is active.",
+      strengths: ["Detected technical skills in the uploaded text."],
+      caveats: ["Mock mode cannot verify achievements, ownership, or measurable impact."]
+    },
     summary: "Mock analysis: this candidate appears to have practical full-stack development experience.",
     experience_timeline: [
       {
@@ -387,26 +717,43 @@ const analyzeWithGemini = async (resumeText) => {
   return normalizeAnalysis(parseJsonFromModel(content));
 };
 
+const analyzeWithProvider = async (provider, resumeText) => {
+  if (provider === "mock") {
+    return analyzeWithMock(resumeText);
+  }
+
+  if (provider === "gemini") {
+    return analyzeWithGemini(resumeText);
+  }
+
+  if (provider === "openai") {
+    return analyzeWithOpenAI(resumeText);
+  }
+
+  throw new Error(`Unsupported LLM_PROVIDER "${provider}". Use "openai", "gemini", or "mock".`);
+};
+
 export const analyzeResumeText = async (resumeText) => {
   if (!resumeText || resumeText.trim().length < 20) {
     throw new Error("Resume text is too short to analyze.");
   }
 
   const provider = (process.env.LLM_PROVIDER || "openai").toLowerCase();
-
-  if (provider === "mock") {
-    return analyzeWithMock(resumeText);
-  }
+  const fallbackProvider = (process.env.LLM_FALLBACK_PROVIDER || "").toLowerCase();
 
   try {
-    if (provider === "gemini") {
-      return await analyzeWithGemini(resumeText);
-    }
-
-    return await analyzeWithOpenAI(resumeText);
+    return await analyzeWithProvider(provider, resumeText);
   } catch (error) {
     if (error.name === "TimeoutError" || error.name === "AbortError") {
       throw new Error("AI provider timed out. Please retry with a smaller resume PDF.");
+    }
+
+    if (
+      fallbackProvider &&
+      fallbackProvider !== provider &&
+      isQuotaError(error)
+    ) {
+      return analyzeWithProvider(fallbackProvider, resumeText);
     }
 
     throw error;

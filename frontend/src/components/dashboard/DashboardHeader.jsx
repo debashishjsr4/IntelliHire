@@ -4,7 +4,7 @@ import MatchScore from "./MatchScore.jsx";
 
 const DashboardHeader = ({
   candidateName,
-  matchScore,
+  profileScore,
   subtitle = "Candidate Insight Dashboard",
   title
 }) => {
@@ -24,7 +24,7 @@ const DashboardHeader = ({
 
         <div className="flex items-center gap-3">
           <div className="hidden md:block">
-            <MatchScore score={matchScore} />
+            <MatchScore profileScore={profileScore} />
           </div>
 
           <button

@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  BarChart3,
   CalendarClock,
   FileText,
   Loader2,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import SkillScoreGuide from "./SkillScoreGuide.jsx";
+import SkillScoreList from "./SkillScoreList.jsx";
 
 const formatTimestamp = (value) => {
   if (!value) {
@@ -30,6 +32,32 @@ const formatTimestamp = (value) => {
   }).format(date);
 };
 
+const profileFactorLabels = {
+  professional_impact: "Impact",
+  role_complexity: "Complexity",
+  ownership: "Ownership",
+  technical_depth: "Depth",
+  career_progression: "Progression",
+  evidence_specificity: "Evidence",
+  recency: "Recency"
+};
+
+const getProfileScoreTone = (score) => {
+  if (score >= 90) {
+    return "text-emerald-700";
+  }
+
+  if (score >= 75) {
+    return "text-[#1a365d]";
+  }
+
+  if (score >= 55) {
+    return "text-amber-700";
+  }
+
+  return "text-red-700";
+};
+
 const CandidateDirectory = ({
   candidates,
   deleteError,
@@ -38,7 +66,8 @@ const CandidateDirectory = ({
   isLoading,
   onClearDeleteError,
   onDeleteCandidate,
-  onRefresh
+  onRefresh,
+  onSelectedCandidateChange
 }) => {
   const [candidatePendingDelete, setCandidatePendingDelete] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -88,6 +117,10 @@ const CandidateDirectory = ({
   const selectedCandidate =
     filteredCandidates.find((candidate) => candidate._id === selectedCandidateId) ||
     filteredCandidates[0];
+
+  useEffect(() => {
+    onSelectedCandidateChange?.(selectedCandidate || null);
+  }, [onSelectedCandidateChange, selectedCandidate]);
 
   const openDeleteConfirmation = (candidate) => {
     onClearDeleteError();
@@ -271,6 +304,88 @@ const CandidateDirectory = ({
                   </p>
                 </section>
 
+                {selectedCandidate.profile_score ? (
+                  <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <BarChart3 className="h-4 w-4 text-[#1a365d]" aria-hidden="true" />
+                          <h4 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+                            Profile Score
+                          </h4>
+                        </div>
+                        <p className="mt-2 break-words text-sm leading-6 text-slate-600">
+                          {selectedCandidate.profile_score.rationale ||
+                            "Candidate strength estimated from CV evidence. This is not a job-description match score."}
+                        </p>
+                      </div>
+                      <div className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className={`text-2xl font-bold ${getProfileScoreTone(selectedCandidate.profile_score.score)}`}>
+                          {selectedCandidate.profile_score.score}%
+                        </p>
+                        <p className="text-sm font-semibold text-slate-600">
+                          {selectedCandidate.profile_score.label}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid min-w-0 gap-3 md:grid-cols-2">
+                      {(selectedCandidate.profile_score.strengths || []).length ? (
+                        <div className="min-w-0 rounded-md bg-slate-50 p-3">
+                          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                            Strengths
+                          </p>
+                          <ul className="mt-2 space-y-2 text-sm leading-5 text-slate-700">
+                            {selectedCandidate.profile_score.strengths.map((strength, index) => (
+                              <li className="break-words" key={`${strength}-${index}`}>
+                                {strength}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+
+                      {(selectedCandidate.profile_score.caveats || []).length ? (
+                        <div className="min-w-0 rounded-md bg-slate-50 p-3">
+                          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                            Caveats
+                          </p>
+                          <ul className="mt-2 space-y-2 text-sm leading-5 text-slate-700">
+                            {selectedCandidate.profile_score.caveats.map((caveat, index) => (
+                              <li className="break-words" key={`${caveat}-${index}`}>
+                                {caveat}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-4 grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                      {Object.entries(selectedCandidate.profile_score.score_factors || {}).map(
+                        ([factor, value]) => (
+                          <div className="min-w-0 rounded-md border border-slate-200 px-3 py-2" key={factor}>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="truncate text-xs font-semibold text-slate-500">
+                                {profileFactorLabels[factor] || factor}
+                              </span>
+                              <span className="text-xs font-bold text-slate-900">
+                                {value}%
+                              </span>
+                            </div>
+                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                              <div
+                                className="h-full rounded-full bg-[#1a365d]"
+                                style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </section>
+                ) : null}
+
                 <section className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-4">
                   <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
@@ -278,7 +393,7 @@ const CandidateDirectory = ({
                         Skills
                       </h4>
                       <p className="mt-1 break-words text-sm leading-6 text-slate-600">
-                        AI-scored skills with resume evidence for each rating.
+                        AI-scored strengths and low-evidence mentions from the CV.
                       </p>
                     </div>
                     <div className="min-w-0 lg:w-80">
@@ -286,44 +401,8 @@ const CandidateDirectory = ({
                     </div>
                   </div>
 
-                  <div className="mt-4 grid min-w-0 gap-3 xl:grid-cols-2">
-                    {(selectedCandidate.skill_scores || []).length ? (
-                      selectedCandidate.skill_scores.map((skill) => (
-                        <div
-                          className="min-w-0 rounded-md border border-slate-200 bg-white p-4 shadow-sm"
-                          key={skill.name}
-                        >
-                          <div className="mb-2 flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <span className="block truncate text-sm font-semibold text-slate-800">
-                                {skill.name}
-                              </span>
-                              {skill.level ? (
-                                <span className="mt-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                  {skill.level}
-                                </span>
-                              ) : null}
-                            </div>
-                            <span className="text-sm font-bold text-[#1a365d]">
-                              {skill.score}%
-                            </span>
-                          </div>
-                          <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-                            <div
-                              className="h-full rounded-full bg-[#1a365d]"
-                              style={{ width: `${skill.score}%` }}
-                            />
-                          </div>
-                          {skill.evidence ? (
-                            <p className="mt-2 break-words text-xs leading-5 text-slate-500">
-                              {skill.evidence}
-                            </p>
-                          ) : null}
-                        </div>
-                      ))
-                    ) : (
-                      <span className="text-sm text-slate-500">No skills extracted.</span>
-                    )}
+                  <div className="mt-4">
+                    <SkillScoreList columns skillScores={selectedCandidate.skill_scores || []} />
                   </div>
                 </section>
               </div>
