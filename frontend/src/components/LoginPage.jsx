@@ -1,22 +1,27 @@
-import { LockKeyhole, LogIn, ShieldCheck, UserRound } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, LogIn, ShieldCheck, UserRound } from "lucide-react";
 import { useState } from "react";
 
-const LoginPage = ({ onLogin }) => {
+const LoginPage = ({ notice, onLogin }) => {
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+    setIsSubmitting(true);
 
-    const isAuthenticated = onLogin({
-      password,
-      userId: userId.trim()
-    });
-
-    if (!isAuthenticated) {
-      setError("Invalid login ID or password.");
+    try {
+      await onLogin({
+        password,
+        userId: userId.trim()
+      });
+    } catch (requestError) {
+      setError(requestError.message || "Invalid login ID or password.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -89,9 +94,19 @@ const LoginPage = ({ onLogin }) => {
                     className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-slate-950 outline-none placeholder:text-slate-400"
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder="Enter password"
-                    type="password"
+                    type={isPasswordVisible ? "text" : "password"}
                     value={password}
                   />
+                  <button
+                    className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-[#1a365d]"
+                    onClick={() => setIsPasswordVisible((current) => !current)}
+                    type="button"
+                  >
+                    {isPasswordVisible ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+                    <span className="sr-only">
+                      {isPasswordVisible ? "Hide password" : "Show password"}
+                    </span>
+                  </button>
                 </span>
               </label>
 
@@ -101,13 +116,19 @@ const LoginPage = ({ onLogin }) => {
                 </div>
               ) : null}
 
+              {!error && notice ? (
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                  {notice}
+                </div>
+              ) : null}
+
               <button
                 className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#1a365d] px-4 py-3 text-sm font-bold text-white transition duration-200 hover:bg-[#25476f] disabled:cursor-not-allowed disabled:bg-slate-300"
-                disabled={!userId.trim() || !password}
+                disabled={isSubmitting || !userId.trim() || !password}
                 type="submit"
               >
                 <LogIn className="h-4 w-4" aria-hidden="true" />
-                Sign in
+                {isSubmitting ? "Signing in" : "Sign in"}
               </button>
             </form>
           </div>

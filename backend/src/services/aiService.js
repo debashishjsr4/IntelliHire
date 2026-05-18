@@ -330,6 +330,235 @@ const resumeAnalysisSchema = {
   }
 };
 
+const buildJobDescriptionPrompt = (jobText) => `
+You are an expert technical recruiter.
+
+Analyze the job description text below and return only valid JSON.
+The document may use any format, title, or section names. Normalize the requirements into this shape:
+{
+  "title": "Role title if present, otherwise Untitled role",
+  "summary": "One sentence summary of the role.",
+  "must_have_skills": ["required skill or capability"],
+  "nice_to_have_skills": ["preferred skill or capability"],
+  "responsibilities": ["main responsibility"],
+  "seniority_level": "Junior, Mid, Senior, Lead, Manager, or Not specified",
+  "domain_context": "Industry, product, team, or business context if present",
+  "required_experience": "Experience requirement if present, otherwise Not specified",
+  "experience_requirements": ["explicit experience requirement"],
+  "education_requirements": ["degree, certification, or education requirement"],
+  "role_metadata": [{"label": "Role Category", "value": "Software Development"}],
+  "source_notes": ["disclaimer, source caveat, or content freshness note"],
+  "additional_sections": [{"title": "Original or meaningful section name", "items": ["normalized item"]}],
+  "evaluation_criteria": ["what a candidate should be evaluated on"]
+}
+
+Rules:
+- Use only information present in the job description.
+- If the document has unusual headings, infer the intent of the section rather than relying on section names.
+- Map headings such as Education, Experience, Knowledge Skills and Abilities, Key Skills, Role, Industry Type, Department, Employment Type, Role Category, or Disclaimer into the most relevant fields above.
+- Split merged portal keywords when possible, for example "Computer scienceAnalytical skillsApplication design" should become separate skills.
+- Put hard requirements, required abilities, key skills, required knowledge, language requirements, and mandatory tools in must_have_skills.
+- Separate must-have requirements from nice-to-have requirements.
+- Put job duties and numbered work items in responsibilities.
+- Put degree requirements in education_requirements.
+- Put years/domain/application design/front-end/back-end experience requirements in experience_requirements and summarize them in required_experience.
+- Put administrative portal metadata such as industry, department, employment type, role category, UG, and PG in role_metadata.
+- Ignore low-value legal disclaimers for matching, but include a short note in source_notes if present.
+- Preserve unusual but meaningful sections in additional_sections only when they do not fit the normalized fields.
+- Keep list items concise and recruiter-friendly.
+- Do not include markdown fences or commentary.
+
+Job description text:
+${jobText}
+`;
+
+const jobDescriptionSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "title",
+    "summary",
+    "must_have_skills",
+    "nice_to_have_skills",
+    "responsibilities",
+    "seniority_level",
+    "domain_context",
+    "required_experience",
+    "experience_requirements",
+    "education_requirements",
+    "role_metadata",
+    "source_notes",
+    "additional_sections",
+    "evaluation_criteria"
+  ],
+  properties: {
+    title: { type: "string" },
+    summary: { type: "string" },
+    must_have_skills: {
+      type: "array",
+      minItems: 0,
+      maxItems: 12,
+      items: { type: "string" }
+    },
+    nice_to_have_skills: {
+      type: "array",
+      minItems: 0,
+      maxItems: 10,
+      items: { type: "string" }
+    },
+    responsibilities: {
+      type: "array",
+      minItems: 0,
+      maxItems: 10,
+      items: { type: "string" }
+    },
+    seniority_level: { type: "string" },
+    domain_context: { type: "string" },
+    required_experience: { type: "string" },
+    experience_requirements: {
+      type: "array",
+      minItems: 0,
+      maxItems: 8,
+      items: { type: "string" }
+    },
+    education_requirements: {
+      type: "array",
+      minItems: 0,
+      maxItems: 8,
+      items: { type: "string" }
+    },
+    role_metadata: {
+      type: "array",
+      minItems: 0,
+      maxItems: 10,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["label", "value"],
+        properties: {
+          label: { type: "string" },
+          value: { type: "string" }
+        }
+      }
+    },
+    source_notes: {
+      type: "array",
+      minItems: 0,
+      maxItems: 4,
+      items: { type: "string" }
+    },
+    additional_sections: {
+      type: "array",
+      minItems: 0,
+      maxItems: 6,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["title", "items"],
+        properties: {
+          title: { type: "string" },
+          items: {
+            type: "array",
+            minItems: 0,
+            maxItems: 8,
+            items: { type: "string" }
+          }
+        }
+      }
+    },
+    evaluation_criteria: {
+      type: "array",
+      minItems: 0,
+      maxItems: 10,
+      items: { type: "string" }
+    }
+  }
+};
+
+const buildJobMatchPrompt = ({ candidate, jobDescription }) => `
+You are an expert technical recruiter.
+
+Compare the candidate profile against the job requirements and return only valid JSON:
+{
+  "score": 74,
+  "label": "Good Match",
+  "rationale": "Short reason grounded in the candidate CV and job requirements.",
+  "matched_requirements": ["requirement the candidate satisfies"],
+  "missing_requirements": ["important requirement not evidenced"],
+  "concerns": ["risk or uncertainty"],
+  "interview_focus": ["topic to validate in interview"]
+}
+
+Meaning:
+- This is a Job Match Score, not the candidate's general Profile Score.
+- Score how well this CV evidence fits this specific job description.
+- Prioritize must-have requirements, relevant professional evidence, seniority fit, domain fit, and recency.
+- Penalize missing critical requirements even if the candidate has a strong general profile.
+- Use conservative scoring. Do not infer fit from keywords without evidence.
+- Label must be one of: "Poor Match", "Weak Match", "Partial Match", "Good Match", "Excellent Match".
+- 85-100 Excellent Match: most must-haves are strongly evidenced and seniority/domain fit is clear.
+- 70-84 Good Match: important requirements are covered, with manageable gaps.
+- 55-69 Partial Match: some alignment, but notable missing evidence.
+- 35-54 Weak Match: limited alignment.
+- 0-34 Poor Match: little relevant evidence.
+
+Job description:
+${JSON.stringify(jobDescription, null, 2)}
+
+Candidate profile:
+${JSON.stringify(candidate, null, 2)}
+`;
+
+const jobMatchSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "score",
+    "label",
+    "rationale",
+    "matched_requirements",
+    "missing_requirements",
+    "concerns",
+    "interview_focus"
+  ],
+  properties: {
+    score: {
+      type: "integer",
+      minimum: 0,
+      maximum: 100
+    },
+    label: {
+      type: "string",
+      enum: ["Poor Match", "Weak Match", "Partial Match", "Good Match", "Excellent Match"]
+    },
+    rationale: { type: "string" },
+    matched_requirements: {
+      type: "array",
+      minItems: 0,
+      maxItems: 8,
+      items: { type: "string" }
+    },
+    missing_requirements: {
+      type: "array",
+      minItems: 0,
+      maxItems: 8,
+      items: { type: "string" }
+    },
+    concerns: {
+      type: "array",
+      minItems: 0,
+      maxItems: 5,
+      items: { type: "string" }
+    },
+    interview_focus: {
+      type: "array",
+      minItems: 0,
+      maxItems: 5,
+      items: { type: "string" }
+    }
+  }
+};
+
 const getResponseText = (data) => {
   if (data.output_text) {
     return data.output_text;
@@ -717,6 +946,100 @@ const analyzeWithGemini = async (resumeText) => {
   return normalizeAnalysis(parseJsonFromModel(content));
 };
 
+const requestOpenAIJson = async ({ prompt, schema, schemaName }) => {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is required when LLM_PROVIDER=openai.");
+  }
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    signal: getProviderTimeoutSignal(),
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      store: false,
+      input: [
+        {
+          role: "system",
+          content: "Return structured recruiting insights as strict JSON."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: schemaName,
+          schema,
+          strict: true
+        }
+      },
+      temperature: 0.2
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(await getProviderErrorMessage(response, "OpenAI"));
+  }
+
+  const data = await response.json();
+  const content = getResponseText(data);
+
+  if (!content) {
+    throw new Error("OpenAI returned an empty response.");
+  }
+
+  return parseJsonFromModel(content);
+};
+
+const requestGeminiJson = async (prompt) => {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is required when LLM_PROVIDER=gemini.");
+  }
+
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      signal: getProviderTimeoutSignal(),
+      headers: {
+        "x-goog-api-key": process.env.GEMINI_API_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [{ text: prompt }]
+          }
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.2
+        }
+      })
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(await getProviderErrorMessage(response, "Gemini"));
+  }
+
+  const data = await response.json();
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!content) {
+    throw new Error("Gemini returned an empty response.");
+  }
+
+  return parseJsonFromModel(content);
+};
+
 const analyzeWithProvider = async (provider, resumeText) => {
   if (provider === "mock") {
     return analyzeWithMock(resumeText);
@@ -731,6 +1054,197 @@ const analyzeWithProvider = async (provider, resumeText) => {
   }
 
   throw new Error(`Unsupported LLM_PROVIDER "${provider}". Use "openai", "gemini", or "mock".`);
+};
+
+const normalizeList = (value, maxItems = 8) =>
+  Array.isArray(value)
+    ? value.filter((item) => typeof item === "string" && item.trim()).slice(0, maxItems)
+    : [];
+
+const normalizeLabelValueList = (value, maxItems = 8) =>
+  Array.isArray(value)
+    ? value
+        .filter((item) => item && typeof item === "object")
+        .map((item) => ({
+          label: typeof item.label === "string" ? item.label.trim() : "",
+          value: typeof item.value === "string" ? item.value.trim() : ""
+        }))
+        .filter((item) => item.label && item.value)
+        .slice(0, maxItems)
+    : [];
+
+const normalizeFlexibleSections = (value, maxItems = 6) =>
+  Array.isArray(value)
+    ? value
+        .filter((item) => item && typeof item === "object")
+        .map((item) => ({
+          title: typeof item.title === "string" ? item.title.trim() : "",
+          items: normalizeList(item.items, 8)
+        }))
+        .filter((item) => item.title && item.items.length)
+        .slice(0, maxItems)
+    : [];
+
+const normalizeJobDescription = (analysis) => ({
+  title:
+    typeof analysis.title === "string" && analysis.title.trim()
+      ? analysis.title.trim()
+      : "Untitled role",
+  summary: typeof analysis.summary === "string" ? analysis.summary : "",
+  must_have_skills: normalizeList(analysis.must_have_skills, 12),
+  nice_to_have_skills: normalizeList(analysis.nice_to_have_skills, 10),
+  responsibilities: normalizeList(analysis.responsibilities, 10),
+  seniority_level:
+    typeof analysis.seniority_level === "string" && analysis.seniority_level.trim()
+      ? analysis.seniority_level.trim()
+      : "Not specified",
+  domain_context:
+    typeof analysis.domain_context === "string" && analysis.domain_context.trim()
+      ? analysis.domain_context.trim()
+      : "Not specified",
+  required_experience:
+    typeof analysis.required_experience === "string" && analysis.required_experience.trim()
+      ? analysis.required_experience.trim()
+      : "Not specified",
+  experience_requirements: normalizeList(analysis.experience_requirements, 8),
+  education_requirements: normalizeList(analysis.education_requirements, 8),
+  role_metadata: normalizeLabelValueList(analysis.role_metadata, 10),
+  source_notes: normalizeList(analysis.source_notes, 4),
+  additional_sections: normalizeFlexibleSections(analysis.additional_sections, 6),
+  evaluation_criteria: normalizeList(analysis.evaluation_criteria, 10)
+});
+
+const getJobMatchLabel = (score) => {
+  if (score >= 85) {
+    return "Excellent Match";
+  }
+
+  if (score >= 70) {
+    return "Good Match";
+  }
+
+  if (score >= 55) {
+    return "Partial Match";
+  }
+
+  if (score >= 35) {
+    return "Weak Match";
+  }
+
+  return "Poor Match";
+};
+
+export const normalizeJobMatch = (match) => {
+  const source = match && typeof match === "object" ? match : {};
+  const score = normalizeScore(source.score);
+
+  return {
+    score,
+    label:
+      typeof source.label === "string" && source.label.trim()
+        ? source.label.trim()
+        : getJobMatchLabel(score),
+    rationale: typeof source.rationale === "string" ? source.rationale : "",
+    matched_requirements: normalizeList(source.matched_requirements, 8),
+    missing_requirements: normalizeList(source.missing_requirements, 8),
+    concerns: normalizeList(source.concerns, 5),
+    interview_focus: normalizeList(source.interview_focus, 5)
+  };
+};
+
+const buildMockJobDescription = (jobText) => {
+  const lowerText = jobText.toLowerCase();
+  const possibleSkills = [
+    "React",
+    "Node.js",
+    "MongoDB",
+    "JavaScript",
+    "TypeScript",
+    "Python",
+    "AWS",
+    "Docker",
+    "SQL",
+    "REST APIs"
+  ];
+  const detectedSkills = possibleSkills.filter((skill) => lowerText.includes(skill.toLowerCase()));
+
+  return {
+    title: "Uploaded Job Description",
+    summary: "Mock analysis extracted a generalized technical role profile.",
+    must_have_skills: detectedSkills.slice(0, 5),
+    nice_to_have_skills: detectedSkills.slice(5, 8),
+    responsibilities: ["Deliver software features", "Collaborate with stakeholders"],
+    seniority_level: lowerText.includes("senior") ? "Senior" : "Not specified",
+    domain_context: "Not specified",
+    required_experience: "Not specified",
+    experience_requirements: [],
+    education_requirements: [],
+    role_metadata: [],
+    source_notes: [],
+    additional_sections: [],
+    evaluation_criteria: ["Relevant technical evidence", "Ownership", "Impact"]
+  };
+};
+
+const buildMockJobMatch = ({ candidate, jobDescription }) => {
+  const candidateSkillNames = (candidate.skill_scores || candidate.extracted_skills || [])
+    .map((skill) => (typeof skill === "string" ? skill : skill.name))
+    .filter(Boolean)
+    .map((skill) => skill.toLowerCase());
+  const requiredSkills = [
+    ...(jobDescription.must_have_skills || []),
+    ...(jobDescription.nice_to_have_skills || [])
+  ];
+  const matched = requiredSkills.filter((skill) =>
+    candidateSkillNames.some((candidateSkill) => candidateSkill.includes(skill.toLowerCase()))
+  );
+  const score = requiredSkills.length
+    ? Math.round((matched.length / requiredSkills.length) * 70 + 10)
+    : 45;
+
+  return normalizeJobMatch({
+    score: Math.min(82, score),
+    rationale: "Mock match estimated from overlapping candidate skills and job requirements.",
+    matched_requirements: matched,
+    missing_requirements: requiredSkills.filter((skill) => !matched.includes(skill)).slice(0, 6),
+    concerns: ["Mock mode cannot evaluate deeper evidence or seniority fit."],
+    interview_focus: ["Validate recent hands-on experience with the matched requirements."]
+  });
+};
+
+const analyzeJsonWithProvider = async ({ provider, prompt, schema, schemaName }) => {
+  if (provider === "openai") {
+    return requestOpenAIJson({ prompt, schema, schemaName });
+  }
+
+  if (provider === "gemini") {
+    return requestGeminiJson(prompt);
+  }
+
+  throw new Error(`Unsupported LLM_PROVIDER "${provider}". Use "openai", "gemini", or "mock".`);
+};
+
+const withQuotaFallback = async ({ mockValue, request }) => {
+  const provider = (process.env.LLM_PROVIDER || "openai").toLowerCase();
+  const fallbackProvider = (process.env.LLM_FALLBACK_PROVIDER || "").toLowerCase();
+
+  if (provider === "mock") {
+    return mockValue();
+  }
+
+  try {
+    return await request(provider);
+  } catch (error) {
+    if (error.name === "TimeoutError" || error.name === "AbortError") {
+      throw new Error("AI provider timed out. Please retry with a smaller PDF.");
+    }
+
+    if (fallbackProvider === "mock" && fallbackProvider !== provider && isQuotaError(error)) {
+      return mockValue();
+    }
+
+    throw error;
+  }
 };
 
 export const analyzeResumeText = async (resumeText) => {
@@ -759,3 +1273,36 @@ export const analyzeResumeText = async (resumeText) => {
     throw error;
   }
 };
+
+export const analyzeJobDescriptionText = async (jobText) => {
+  if (!jobText || jobText.trim().length < 20) {
+    throw new Error("Job description text is too short to analyze.");
+  }
+
+  return withQuotaFallback({
+    mockValue: () => buildMockJobDescription(jobText),
+    request: async (provider) =>
+      normalizeJobDescription(
+        await analyzeJsonWithProvider({
+          provider,
+          prompt: buildJobDescriptionPrompt(jobText),
+          schema: jobDescriptionSchema,
+          schemaName: "job_description_analysis"
+        })
+      )
+  });
+};
+
+export const analyzeCandidateJobMatch = async ({ candidate, jobDescription }) =>
+  withQuotaFallback({
+    mockValue: () => buildMockJobMatch({ candidate, jobDescription }),
+    request: async (provider) =>
+      normalizeJobMatch(
+        await analyzeJsonWithProvider({
+          provider,
+          prompt: buildJobMatchPrompt({ candidate, jobDescription }),
+          schema: jobMatchSchema,
+          schemaName: "candidate_job_match"
+        })
+      )
+  });

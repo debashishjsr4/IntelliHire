@@ -1,7 +1,12 @@
 import Candidate from "../models/Candidate.js";
+import JobDescription from "../models/JobDescription.js";
 import mongoose from "mongoose";
+import {
+  createJobMatchForCandidate,
+  upsertCandidateJobMatch
+} from "./jobController.js";
 import { analyzeResumeText } from "../services/aiService.js";
-import { extractTextFromPdf } from "../services/pdfService.js";
+import { extractTextFromJobDocument } from "../services/documentService.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const NOT_AVAILABLE = "Not available";
@@ -366,21 +371,34 @@ const normalizeProfileScore = (profileScore, fallbackContext) => {
 
 export const parseResume = asyncHandler(async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ message: "Please upload a PDF resume." });
+    return res.status(400).json({ message: "Please upload a PDF or DOCX resume." });
   }
 
-  // 1. Convert the uploaded PDF into text.
-  const resumeText = await extractTextFromPdf(req.file.buffer);
+  // 1. Convert the uploaded resume document into text.
+  const resumeText = await extractTextFromJobDocument(req.file);
 
   // 2. Send the extracted text to the configured LLM provider.
   const analysis = await analyzeResumeText(resumeText);
   const skillScores = buildSkillScores(analysis.skill_scores, analysis.skills);
   const candidateName = inferName(resumeText, analysis.candidate_name);
   const candidateEmail = inferEmail(resumeText, analysis.email);
+  let selectedJobDescription = null;
   const profileScore = normalizeProfileScore(analysis.profile_score, {
     experienceTimeline: analysis.experience_timeline,
     skillScores
   });
+
+  if (req.body.job_description_id) {
+    if (!mongoose.isValidObjectId(req.body.job_description_id)) {
+      return res.status(400).json({ message: "Invalid job description id." });
+    }
+
+    selectedJobDescription = await JobDescription.findById(req.body.job_description_id);
+
+    if (!selectedJobDescription) {
+      return res.status(404).json({ message: "Job description not found." });
+    }
+  }
 
   // 3. Store the result so recruiters can search candidates later.
   const candidate = await Candidate.create({
@@ -394,11 +412,21 @@ export const parseResume = asyncHandler(async (req, res) => {
     experience_timeline: analysis.experience_timeline
   });
 
+  if (selectedJobDescription) {
+    const storedMatch = await createJobMatchForCandidate({
+      candidate,
+      jobDescription: selectedJobDescription
+    });
+    upsertCandidateJobMatch(candidate, storedMatch);
+    await candidate.save();
+  }
+
   res.status(201).json({
     candidate,
     skills: skillScores.map((skill) => skill.name),
     skill_scores: skillScores,
     profile_score: profileScore,
+    job_matches: candidate.job_matches,
     summary: analysis.summary,
     experience_timeline: analysis.experience_timeline
   });
@@ -407,7 +435,7 @@ export const parseResume = asyncHandler(async (req, res) => {
 export const getParsedCandidates = asyncHandler(async (_req, res) => {
   const candidates = await Candidate.find({})
     .sort({ createdAt: -1 })
-    .select("name email extracted_skills skill_scores profile_score resume_url summary experience_timeline createdAt updatedAt")
+    .select("name email extracted_skills skill_scores profile_score job_matches resume_url summary experience_timeline createdAt updatedAt")
     .lean();
 
   res.status(200).json({ candidates });
@@ -429,5 +457,36 @@ export const deleteParsedCandidate = asyncHandler(async (req, res) => {
   res.status(200).json({
     candidateId,
     message: "Candidate deleted successfully."
+  });
+});
+
+export const deleteCandidateJobMatch = asyncHandler(async (req, res) => {
+  const { candidateId, jobDescriptionId } = req.params;
+
+  if (!mongoose.isValidObjectId(candidateId) || !mongoose.isValidObjectId(jobDescriptionId)) {
+    return res.status(400).json({ message: "Invalid candidate or job description id." });
+  }
+
+  const candidate = await Candidate.findById(candidateId);
+
+  if (!candidate) {
+    return res.status(404).json({ message: "Candidate not found." });
+  }
+
+  const originalMatchCount = candidate.job_matches.length;
+  candidate.job_matches = candidate.job_matches.filter(
+    (match) => match.job_description_id?.toString() !== jobDescriptionId
+  );
+
+  if (candidate.job_matches.length === originalMatchCount) {
+    return res.status(404).json({ message: "Saved job match not found." });
+  }
+
+  await candidate.save();
+
+  res.status(200).json({
+    candidate,
+    jobDescriptionId,
+    message: "Saved job match deleted successfully."
   });
 });

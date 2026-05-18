@@ -74,6 +74,59 @@ const normalizeStringArray = (value) => {
 
 const normalizeTimeline = (value) => (Array.isArray(value) ? value : []);
 
+const normalizeJobMatch = (match) => {
+  const source = match && typeof match === "object" ? match : {};
+  const score =
+    typeof source.score === "number"
+      ? Math.max(0, Math.min(100, Math.round(source.score)))
+      : 0;
+
+  return {
+    ...source,
+    score,
+    label: typeof source.label === "string" && source.label.trim() ? source.label : "Partial Match",
+    rationale: typeof source.rationale === "string" ? source.rationale : "",
+    matched_requirements: normalizeStringArray(source.matched_requirements),
+    missing_requirements: normalizeStringArray(source.missing_requirements),
+    concerns: normalizeStringArray(source.concerns),
+    interview_focus: normalizeStringArray(source.interview_focus)
+  };
+};
+
+const normalizeJobDescription = (jobDescription) => ({
+  ...jobDescription,
+  title: jobDescription.title || "Untitled role",
+  summary: jobDescription.summary || "",
+  must_have_skills: normalizeStringArray(jobDescription.must_have_skills),
+  nice_to_have_skills: normalizeStringArray(jobDescription.nice_to_have_skills),
+  responsibilities: normalizeStringArray(jobDescription.responsibilities),
+  seniority_level: jobDescription.seniority_level || "Not specified",
+  domain_context: jobDescription.domain_context || "Not specified",
+  required_experience: jobDescription.required_experience || "Not specified",
+  experience_requirements: normalizeStringArray(jobDescription.experience_requirements),
+  education_requirements: normalizeStringArray(jobDescription.education_requirements),
+  role_metadata: Array.isArray(jobDescription.role_metadata)
+    ? jobDescription.role_metadata
+        .filter((item) => item && typeof item === "object")
+        .map((item) => ({
+          label: typeof item.label === "string" ? item.label : "",
+          value: typeof item.value === "string" ? item.value : ""
+        }))
+        .filter((item) => item.label && item.value)
+    : [],
+  source_notes: normalizeStringArray(jobDescription.source_notes),
+  additional_sections: Array.isArray(jobDescription.additional_sections)
+    ? jobDescription.additional_sections
+        .filter((section) => section && typeof section === "object")
+        .map((section) => ({
+          title: typeof section.title === "string" ? section.title : "",
+          items: normalizeStringArray(section.items)
+        }))
+        .filter((section) => section.title && section.items.length)
+    : [],
+  evaluation_criteria: normalizeStringArray(jobDescription.evaluation_criteria)
+});
+
 const getSkillStrength = (skill, index) => {
   const characterTotal = skill
     .split("")
@@ -318,27 +371,14 @@ const normalizeCandidate = (candidate) => {
     extracted_skills: normalizeStringArray(candidate.extracted_skills),
     skill_scores: skillScores,
     profile_score: normalizeProfileScore(candidate, skillScores, experienceTimeline),
+    job_matches: Array.isArray(candidate.job_matches)
+      ? candidate.job_matches.map(normalizeJobMatch)
+      : [],
     experience_timeline: experienceTimeline
   };
 };
 
-export const parseResume = async ({ file }) => {
-  const formData = new FormData();
-  formData.append("resume", file);
-
-  let response;
-
-  try {
-    response = await fetch(`${API_BASE_URL}/api/resumes/parse`, {
-      method: "POST",
-      body: formData
-    });
-  } catch {
-    throw new Error(
-      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
-    );
-  }
-
+const parseApiResponse = async (response, fallbackMessage) => {
   const responseText = await response.text();
   let data = {};
 
@@ -353,8 +393,93 @@ export const parseResume = async ({ file }) => {
   }
 
   if (!response.ok) {
-    throw new Error(data.message || "Resume parsing failed.");
+    throw new Error(data.message || fallbackMessage);
   }
+
+  return data;
+};
+
+export const loginUser = async ({ password, userId }) => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ password, userId })
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  return parseApiResponse(response, "Login failed.");
+};
+
+export const fetchCurrentUser = async ({ userId }) => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/auth/session`, {
+      headers: {
+        "x-user-id": userId
+      }
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  return parseApiResponse(response, "Unable to refresh user session.");
+};
+
+export const changeOwnPassword = async ({ currentPassword, newPassword, userId }) => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/auth/password`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": userId
+      },
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  return parseApiResponse(response, "Unable to change password.");
+};
+
+export const parseResume = async ({ file, jobDescriptionId = "" }) => {
+  const formData = new FormData();
+  formData.append("resume", file);
+
+  if (jobDescriptionId) {
+    formData.append("job_description_id", jobDescriptionId);
+  }
+
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/resumes/parse`, {
+      method: "POST",
+      body: formData
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  const data = await parseApiResponse(response, "Resume parsing failed.");
 
   const normalizedCandidate = data.candidate ? normalizeCandidate(data.candidate) : data.candidate;
 
@@ -363,6 +488,7 @@ export const parseResume = async ({ file }) => {
     candidate: normalizedCandidate,
     skills: normalizeStringArray(data.skills),
     skill_scores: normalizeSkillScores(data.skill_scores, data.skills),
+    job_matches: Array.isArray(data.job_matches) ? data.job_matches.map(normalizeJobMatch) : [],
     profile_score:
       normalizedCandidate?.profile_score ||
       normalizeProfileScore(data, normalizeSkillScores(data.skill_scores, data.skills), normalizeTimeline(data.experience_timeline)),
@@ -381,22 +507,7 @@ export const fetchParsedCandidates = async () => {
     );
   }
 
-  const responseText = await response.text();
-  let data = {};
-
-  try {
-    data = responseText ? JSON.parse(responseText) : {};
-  } catch {
-    throw new Error(
-      responseText
-        ? `Server returned a non-JSON response (${response.status}): ${responseText}`
-        : "The server returned an empty non-JSON response."
-    );
-  }
-
-  if (!response.ok) {
-    throw new Error(data.message || "Unable to load parsed candidates.");
-  }
+  const data = await parseApiResponse(response, "Unable to load parsed candidates.");
 
   return (data.candidates || []).map(normalizeCandidate);
 };
@@ -414,22 +525,286 @@ export const deleteParsedCandidate = async (candidateId) => {
     );
   }
 
-  const responseText = await response.text();
-  let data = {};
+  return parseApiResponse(response, "Unable to delete candidate.");
+};
+
+export const deleteCandidateJobMatch = async ({ candidateId, jobDescriptionId }) => {
+  let response;
 
   try {
-    data = responseText ? JSON.parse(responseText) : {};
+    response = await fetch(
+      `${API_BASE_URL}/api/resumes/candidates/${candidateId}/job-matches/${jobDescriptionId}`,
+      {
+        method: "DELETE"
+      }
+    );
   } catch {
     throw new Error(
-      responseText
-        ? `Server returned a non-JSON response (${response.status}): ${responseText}`
-        : "The server returned an empty non-JSON response."
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
     );
   }
 
-  if (!response.ok) {
-    throw new Error(data.message || "Unable to delete candidate.");
+  const data = await parseApiResponse(response, "Unable to delete saved job match.");
+
+  return {
+    ...data,
+    candidate: data.candidate ? normalizeCandidate(data.candidate) : null
+  };
+};
+
+export const fetchJobDescriptions = async () => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/jobs`);
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
   }
 
-  return data;
+  const data = await parseApiResponse(response, "Unable to load job descriptions.");
+
+  return (data.jobDescriptions || []).map(normalizeJobDescription);
+};
+
+export const uploadJobDescription = async ({ file }) => {
+  const formData = new FormData();
+  formData.append("jobDescription", file);
+
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/jobs/upload`, {
+      method: "POST",
+      body: formData
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  const data = await parseApiResponse(response, "Job description upload failed.");
+
+  return normalizeJobDescription(data.jobDescription);
+};
+
+export const createJobDescriptionFromText = async ({ sourceName, text }) => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/jobs/text`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ sourceName, text })
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  const data = await parseApiResponse(response, "Job description creation failed.");
+
+  return normalizeJobDescription(data.jobDescription);
+};
+
+export const updateJobDescriptionTitle = async ({ jobDescriptionId, title }) => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/jobs/${jobDescriptionId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ title })
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  const data = await parseApiResponse(response, "Unable to update job description name.");
+
+  return normalizeJobDescription(data.jobDescription);
+};
+
+export const deleteJobDescription = async (jobDescriptionId) => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/jobs/${jobDescriptionId}`, {
+      method: "DELETE"
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  return parseApiResponse(response, "Unable to delete job description.");
+};
+
+export const matchJobCandidates = async (jobDescriptionId) => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/jobs/${jobDescriptionId}/match-candidates`, {
+      method: "POST"
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  const data = await parseApiResponse(response, "Unable to match candidates.");
+
+  return {
+    matchedCount: data.matchedCount || 0,
+    candidates: (data.candidates || []).map(normalizeCandidate)
+  };
+};
+
+export const fetchJobCandidateShortlist = async ({ jobDescriptionId, limit = 10 }) => {
+  let response;
+
+  try {
+    response = await fetch(
+      `${API_BASE_URL}/api/jobs/${jobDescriptionId}/shortlist?limit=${encodeURIComponent(limit)}`
+    );
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  const data = await parseApiResponse(response, "Unable to shortlist candidates.");
+
+  return (data.shortlist || []).map((item) => ({
+    ...item,
+    candidate: normalizeCandidate(item.candidate),
+    matched_requirements: normalizeStringArray(item.matched_requirements),
+    missing_requirements: normalizeStringArray(item.missing_requirements),
+    shortlist_score:
+      typeof item.shortlist_score === "number"
+        ? Math.max(0, Math.min(100, Math.round(item.shortlist_score)))
+        : 0
+  }));
+};
+
+export const matchSelectedJobCandidates = async ({ candidateIds, jobDescriptionId }) => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/jobs/${jobDescriptionId}/match-selected`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ candidate_ids: candidateIds })
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  const data = await parseApiResponse(response, "Unable to match selected candidates.");
+
+  return {
+    matchedCount: data.matchedCount || 0,
+    candidates: (data.candidates || []).map(normalizeCandidate)
+  };
+};
+
+export const fetchUsers = async ({ userId }) => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/users`, {
+      headers: {
+        "x-user-id": userId
+      }
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  return parseApiResponse(response, "Unable to load users.");
+};
+
+export const createUser = async ({ password, role, requestingUserId, userId }) => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": requestingUserId
+      },
+      body: JSON.stringify({ password, role, userId })
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  return parseApiResponse(response, "Unable to create user.");
+};
+
+export const updateUser = async ({
+  isLocked,
+  newUserId,
+  password,
+  requestingUserId,
+  role,
+  userId
+}) => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(userId)}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": requestingUserId
+      },
+      body: JSON.stringify({ isLocked, newUserId, password, role })
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  return parseApiResponse(response, "Unable to update user.");
+};
+
+export const deleteUser = async ({ requestingUserId, userId }) => {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+      headers: {
+        "x-user-id": requestingUserId
+      }
+    });
+  } catch {
+    throw new Error(
+      `Cannot reach the IntelliHire API at ${API_BASE_URL}. Start the backend server and check VITE_API_BASE_URL.`
+    );
+  }
+
+  return parseApiResponse(response, "Unable to delete user.");
 };

@@ -1,15 +1,16 @@
-import { BriefcaseBusiness, LayoutDashboard, Settings, UsersRound } from "lucide-react";
+import { BriefcaseBusiness, LayoutDashboard, LockKeyhole, Settings, UsersRound } from "lucide-react";
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "jobs", label: "Jobs", icon: BriefcaseBusiness, isDisabled: true },
+  { id: "jobs", label: "Job Descriptions", icon: BriefcaseBusiness },
   { id: "candidates", label: "Candidates", icon: UsersRound },
-  { id: "settings", label: "Settings", icon: Settings, isDisabled: true }
+  { id: "settings", label: "Settings", icon: Settings, adminOnly: true }
 ];
 
-const Sidebar = ({ activeView, candidateCount, onViewChange }) => {
+const Sidebar = ({ activeView, candidateCount, onViewChange, userRole }) => {
   const renderNavItem = (item, variant = "desktop") => {
     const Icon = item.icon;
+    const isDisabled = item.isDisabled || (item.adminOnly && userRole !== "admin");
     const isActive = activeView === item.id;
     const isMobile = variant === "mobile";
 
@@ -21,24 +22,27 @@ const Sidebar = ({ activeView, candidateCount, onViewChange }) => {
             ? `flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md px-2 py-2 text-xs font-semibold transition duration-200 ${
                 isActive
                   ? "bg-[#1a365d] text-white shadow-sm"
-                  : item.isDisabled
+                  : isDisabled
                     ? "cursor-not-allowed text-slate-300"
                     : "text-slate-600 hover:bg-slate-100 hover:text-[#1a365d]"
               }`
             : `flex w-full items-center gap-3 rounded-md px-3 py-3 text-left text-sm font-medium transition duration-200 ${
                 isActive
                   ? "bg-white text-[#1a365d] shadow-sm"
-                  : item.isDisabled
+                  : isDisabled
                     ? "cursor-not-allowed text-slate-400"
                     : "text-slate-200 hover:bg-white/10 hover:text-white"
               }`
         }
-        disabled={item.isDisabled}
+        disabled={isDisabled}
         key={item.label}
         onClick={() => onViewChange(item.id)}
         type="button"
       >
         <Icon className={isMobile ? "h-5 w-5" : "h-5 w-5"} aria-hidden="true" />
+        {isDisabled && item.adminOnly ? (
+          <LockKeyhole className={isMobile ? "h-3 w-3" : "ml-auto h-4 w-4"} aria-hidden="true" />
+        ) : null}
         <span className={isMobile ? "max-w-full truncate" : ""}>{item.label}</span>
       </button>
     );

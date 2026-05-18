@@ -1,7 +1,9 @@
 import {
   AlertTriangle,
   BarChart3,
+  BriefcaseBusiness,
   CalendarClock,
+  ChevronDown,
   FileText,
   Loader2,
   Mail,
@@ -58,18 +60,45 @@ const getProfileScoreTone = (score) => {
   return "text-red-700";
 };
 
+const getJobMatchTone = (score) => {
+  if (score >= 85) {
+    return "text-emerald-700";
+  }
+
+  if (score >= 70) {
+    return "text-[#1a365d]";
+  }
+
+  if (score >= 55) {
+    return "text-amber-700";
+  }
+
+  return "text-red-700";
+};
+
 const CandidateDirectory = ({
   candidates,
   deleteError,
+  deleteJobMatchError,
+  deletingJobMatchKey,
   error,
   isDeleting,
   isLoading,
+  jobDescriptions = [],
   onClearDeleteError,
+  onClearDeleteJobMatchError,
   onDeleteCandidate,
+  onDeleteCandidateJobMatch,
+  onMatchCandidateToJob,
   onRefresh,
   onSelectedCandidateChange
 }) => {
+  const [candidateJobMatchPendingDelete, setCandidateJobMatchPendingDelete] = useState(null);
   const [candidatePendingDelete, setCandidatePendingDelete] = useState(null);
+  const [candidateMatchError, setCandidateMatchError] = useState("");
+  const [isCandidateMatching, setIsCandidateMatching] = useState(false);
+  const [jobMatchExpandedByCandidateId, setJobMatchExpandedByCandidateId] = useState({});
+  const [matchJobDescriptionId, setMatchJobDescriptionId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCandidateId, setSelectedCandidateId] = useState("");
 
@@ -122,6 +151,31 @@ const CandidateDirectory = ({
     onSelectedCandidateChange?.(selectedCandidate || null);
   }, [onSelectedCandidateChange, selectedCandidate]);
 
+  useEffect(() => {
+    setCandidateMatchError("");
+    setMatchJobDescriptionId("");
+  }, [selectedCandidate?._id]);
+
+  const selectedJobMatches = selectedCandidate?.job_matches || [];
+  const bestJobMatch = selectedJobMatches.reduce(
+    (bestMatch, jobMatch) => (!bestMatch || jobMatch.score > bestMatch.score ? jobMatch : bestMatch),
+    null
+  );
+  const isJobMatchesExpanded = selectedCandidate?._id
+    ? jobMatchExpandedByCandidateId[selectedCandidate._id] ?? true
+    : true;
+
+  const toggleJobMatches = () => {
+    if (!selectedCandidate?._id) {
+      return;
+    }
+
+    setJobMatchExpandedByCandidateId((current) => ({
+      ...current,
+      [selectedCandidate._id]: !(current[selectedCandidate._id] ?? true)
+    }));
+  };
+
   const openDeleteConfirmation = (candidate) => {
     onClearDeleteError();
     setCandidatePendingDelete(candidate);
@@ -130,6 +184,16 @@ const CandidateDirectory = ({
   const closeDeleteConfirmation = () => {
     onClearDeleteError();
     setCandidatePendingDelete(null);
+  };
+
+  const openJobMatchDeleteConfirmation = (jobMatch) => {
+    onClearDeleteJobMatchError();
+    setCandidateJobMatchPendingDelete(jobMatch);
+  };
+
+  const closeJobMatchDeleteConfirmation = () => {
+    onClearDeleteJobMatchError();
+    setCandidateJobMatchPendingDelete(null);
   };
 
   const handleConfirmDelete = async () => {
@@ -142,6 +206,47 @@ const CandidateDirectory = ({
       closeDeleteConfirmation();
     } catch {
       // The parent owns the displayed error so the modal can stay open for retry.
+    }
+  };
+
+  const handleConfirmJobMatchDelete = async () => {
+    if (!selectedCandidate?._id || !candidateJobMatchPendingDelete?.job_description_id) {
+      return;
+    }
+
+    try {
+      await onDeleteCandidateJobMatch({
+        candidateId: selectedCandidate._id,
+        jobDescriptionId: candidateJobMatchPendingDelete.job_description_id
+      });
+      closeJobMatchDeleteConfirmation();
+    } catch {
+      // The parent owns the displayed error so the modal can stay open for retry.
+    }
+  };
+
+  const handleRunCandidateJobMatch = async () => {
+    if (!selectedCandidate?._id) {
+      return;
+    }
+
+    if (!matchJobDescriptionId) {
+      setCandidateMatchError("Select a job description before running AI match.");
+      return;
+    }
+
+    setCandidateMatchError("");
+    setIsCandidateMatching(true);
+
+    try {
+      await onMatchCandidateToJob({
+        candidateId: selectedCandidate._id,
+        jobDescriptionId: matchJobDescriptionId
+      });
+    } catch (requestError) {
+      setCandidateMatchError(requestError.message || "Unable to match candidate to job.");
+    } finally {
+      setIsCandidateMatching(false);
     }
   };
 
@@ -304,6 +409,144 @@ const CandidateDirectory = ({
                   </p>
                 </section>
 
+                <section className="min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm">
+                  <button
+                    className="flex w-full min-w-0 items-start justify-between gap-4 p-4 text-left transition hover:bg-slate-50"
+                    onClick={toggleJobMatches}
+                    type="button"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <BriefcaseBusiness className="h-4 w-4 text-[#1a365d]" aria-hidden="true" />
+                        <h4 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+                          Job Matches
+                        </h4>
+                      </div>
+                      {bestJobMatch ? (
+                        <p className="mt-2 min-w-0 break-words text-sm leading-6 text-slate-600">
+                          Best match: <span className="font-bold text-slate-950">{bestJobMatch.job_title || "Untitled role"}</span>
+                          {" "}with a <span className={`font-bold ${getJobMatchTone(bestJobMatch.score)}`}>{bestJobMatch.score}%</span> score.
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm leading-6 text-slate-500">
+                          Compare this candidate against one saved job description at a time.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-3">
+                      {bestJobMatch ? (
+                        <span className={`rounded-md bg-slate-50 px-3 py-2 text-lg font-bold ${getJobMatchTone(bestJobMatch.score)}`}>
+                          {bestJobMatch.score}%
+                        </span>
+                      ) : (
+                        <span className="hidden rounded-md bg-slate-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500 sm:inline">
+                          Not matched
+                        </span>
+                      )}
+                      <ChevronDown
+                        className={`h-5 w-5 text-slate-500 transition ${isJobMatchesExpanded ? "rotate-180" : ""}`}
+                        aria-hidden="true"
+                      />
+                    </div>
+                  </button>
+
+                  {isJobMatchesExpanded ? (
+                    <div className="border-t border-slate-200 p-4">
+                      <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <p className="text-sm leading-6 text-slate-500">
+                          Select a saved job description and run an AI match for this candidate.
+                        </p>
+
+                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row lg:max-w-xl">
+                          <select
+                            className="min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-[#1a365d] focus:ring-2 focus:ring-slate-200 sm:w-64"
+                            disabled={!jobDescriptions.length || isCandidateMatching}
+                            onChange={(event) => setMatchJobDescriptionId(event.target.value)}
+                            value={matchJobDescriptionId}
+                          >
+                            <option value="">
+                              {jobDescriptions.length ? "Select job description" : "No job descriptions"}
+                            </option>
+                            {jobDescriptions.map((jobDescription) => (
+                              <option key={jobDescription._id} value={jobDescription._id}>
+                                {jobDescription.title}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            className="inline-flex items-center justify-center gap-2 rounded-md bg-[#1a365d] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#244a7a] disabled:cursor-not-allowed disabled:bg-slate-400"
+                            disabled={!jobDescriptions.length || isCandidateMatching}
+                            onClick={handleRunCandidateJobMatch}
+                            type="button"
+                          >
+                            {isCandidateMatching ? (
+                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <BriefcaseBusiness className="h-4 w-4" aria-hidden="true" />
+                            )}
+                            {isCandidateMatching ? "Matching" : "Run AI Match"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {candidateMatchError ? (
+                        <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                          {candidateMatchError}
+                        </div>
+                      ) : null}
+
+                      {selectedJobMatches.length ? (
+                        <div className="mt-4 grid min-w-0 gap-3 lg:grid-cols-2">
+                          {selectedJobMatches.map((jobMatch) => (
+                            <div
+                              className="min-w-0 rounded-md border border-slate-200 bg-slate-50 p-4"
+                              key={`${jobMatch.job_description_id}-${jobMatch.createdAt}`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="break-words text-sm font-bold text-slate-950">
+                                    {jobMatch.job_title || "Untitled role"}
+                                  </p>
+                                  <p className="mt-1 break-words text-xs font-semibold text-slate-500">
+                                    {jobMatch.label}
+                                  </p>
+                                </div>
+                                <div className="flex shrink-0 items-center gap-2">
+                                  <span className={`text-lg font-bold ${getJobMatchTone(jobMatch.score)}`}>
+                                    {jobMatch.score}%
+                                  </span>
+                                  <button
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 bg-white text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                    disabled={deletingJobMatchKey === `${selectedCandidate._id}-${jobMatch.job_description_id}`}
+                                    onClick={() => openJobMatchDeleteConfirmation(jobMatch)}
+                                    title="Delete saved match"
+                                    type="button"
+                                  >
+                                    {deletingJobMatchKey === `${selectedCandidate._id}-${jobMatch.job_description_id}` ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                                    ) : (
+                                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                                    )}
+                                    <span className="sr-only">Delete saved match</span>
+                                  </button>
+                                </div>
+                              </div>
+                              <p className="mt-3 break-words text-sm leading-6 text-slate-600">
+                                {jobMatch.rationale || "No rationale was generated for this match."}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-sm leading-6 text-slate-500">
+                          No job match scores yet. Select a job description while uploading a CV, or match candidates from the Job Descriptions section.
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+                </section>
+
                 {selectedCandidate.profile_score ? (
                   <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -449,6 +692,85 @@ const CandidateDirectory = ({
           )}
         </div>
       </section>
+
+      {candidateJobMatchPendingDelete ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-lg bg-white shadow-2xl ring-1 ring-slate-950/10">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-700">
+                  <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <h3 className="text-base font-bold text-slate-950">
+                    Delete saved job match?
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    This removes this match result from the candidate profile.
+                  </p>
+                </div>
+              </div>
+              <button
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition duration-200 hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={Boolean(deletingJobMatchKey)}
+                onClick={closeJobMatchDeleteConfirmation}
+                type="button"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only">Close confirmation</span>
+              </button>
+            </div>
+
+            <div className="px-5 py-5">
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-bold text-slate-950">
+                      {candidateJobMatchPendingDelete.job_title || "Untitled role"}
+                    </p>
+                    <p className="mt-1 break-words text-sm text-slate-500">
+                      {candidateJobMatchPendingDelete.label || "Saved match"}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 text-lg font-bold ${getJobMatchTone(candidateJobMatchPendingDelete.score)}`}>
+                    {candidateJobMatchPendingDelete.score}%
+                  </span>
+                </div>
+              </div>
+
+              {deleteJobMatchError ? (
+                <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {deleteJobMatchError}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
+              <button
+                className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition duration-200 hover:border-slate-400 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={Boolean(deletingJobMatchKey)}
+                onClick={closeJobMatchDeleteConfirmation}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition duration-200 hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+                disabled={Boolean(deletingJobMatchKey)}
+                onClick={handleConfirmJobMatchDelete}
+                type="button"
+              >
+                {deletingJobMatchKey ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                )}
+                {deletingJobMatchKey ? "Deleting" : "Delete match"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {candidatePendingDelete ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm">

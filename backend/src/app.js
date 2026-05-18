@@ -2,7 +2,10 @@ import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import connectDB from "./config/db.js";
+import authRoutes from "./routes/authRoutes.js";
+import jobRoutes from "./routes/jobRoutes.js";
 import resumeRoutes from "./routes/resumeRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 
 const app = express();
@@ -51,7 +54,10 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use(async (req, _res, next) => {
-  if (!req.path.includes("/resumes")) {
+  const databaseBackedPaths = ["/auth", "/jobs", "/resumes", "/users"];
+  const needsDatabase = databaseBackedPaths.some((path) => req.path.includes(path));
+
+  if (!needsDatabase) {
     return next();
   }
 
@@ -68,8 +74,14 @@ app.use(async (req, _res, next) => {
   }
 });
 
+app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes);
+app.use("/api/jobs", jobRoutes);
+app.use("/jobs", jobRoutes);
 app.use("/api/resumes", resumeRoutes);
 app.use("/resumes", resumeRoutes);
+app.use("/api/users", userRoutes);
+app.use("/users", userRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

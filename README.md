@@ -51,6 +51,16 @@ resume_url=<optional hosted resume URL>
 Candidate name and email are extracted from the uploaded CV. If no email address is found, the saved candidate record uses `Not available`.
 Skill percentages are scored conservatively by the configured LLM from explicit resume evidence and stored with the candidate as `skill_scores`, including the skill name, score, derived level, score factors, and evidence. The extracted skill profile keeps up to 10 skills, including strengths as well as weakly supported CV mentions, so recruiters can distinguish real strengths from low-evidence keywords. The UI groups skills into strengths, moderate evidence, and low-evidence mentions. The scoring prompt weighs direct application, complexity, ownership, impact, recency, and evidence quality, then applies caps for shallow or vague CV evidence.
 Each successfully parsed CV also stores `profile_score`, a 0-100 signal for how strong the candidate appears from the CV claims in their own area of experience. It is not a job-match score unless a job description is provided. The score weighs professional impact, role complexity, ownership, technical depth, career progression, evidence specificity, and recency. Scores above 90 should be rare and reserved for exceptional achievements or repeated high-impact delivery.
+Job description PDFs can be uploaded into a requirement library. IntelliHire normalizes differently structured JDs into must-have skills, nice-to-have skills, responsibilities, seniority, domain context, required experience, and evaluation criteria. Candidates can then receive a separate `job_matches` score for each JD while keeping their general `profile_score`. For larger candidate libraries, the Jobs view uses a fast shortlist first, then runs AI match scoring only for selected candidates.
+
+Login uses a built-in SmartAdmin account for initial access:
+
+```text
+Login ID: SmartAdmin
+Password: Nlite
+```
+
+SmartAdmin can create additional users from Settings. Non-admin users can sign in and use the hiring views, but Settings is locked in the UI.
 
 ## Frontend
 

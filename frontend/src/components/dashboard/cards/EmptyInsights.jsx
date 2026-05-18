@@ -11,7 +11,7 @@ const EmptyInsights = () => {
           Candidate insights will appear here
         </h3>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-          Upload a PDF resume to review the AI summary, skill strengths, and timeline.
+          Upload a PDF or DOCX resume to review the AI summary, skill strengths, and timeline.
         </p>
       </div>
     </section>

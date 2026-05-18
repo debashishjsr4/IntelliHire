@@ -178,6 +178,59 @@ const candidateSchema = new mongoose.Schema(
         default: []
       }
     },
+    job_matches: {
+      type: [
+        {
+          job_description_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "JobDescription",
+            index: true
+          },
+          job_title: {
+            type: String,
+            trim: true,
+            default: "Untitled role"
+          },
+          score: {
+            type: Number,
+            min: 0,
+            max: 100,
+            default: 0
+          },
+          label: {
+            type: String,
+            trim: true,
+            default: "Partial Match"
+          },
+          rationale: {
+            type: String,
+            trim: true,
+            default: ""
+          },
+          matched_requirements: {
+            type: [String],
+            default: []
+          },
+          missing_requirements: {
+            type: [String],
+            default: []
+          },
+          concerns: {
+            type: [String],
+            default: []
+          },
+          interview_focus: {
+            type: [String],
+            default: []
+          },
+          createdAt: {
+            type: Date,
+            default: Date.now
+          }
+        }
+      ],
+      default: []
+    },
     resume_url: {
       type: String,
       trim: true,
