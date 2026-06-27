@@ -1,31 +1,49 @@
 services:
-  mongo:
-    image: mongo:7
-    container_name: intellihire-mongo
-    restart: unless-stopped
+  app:
+    build: .
+    container_name: intellihire-app
+    restart: always
     ports:
-      - "27017:27017"
+      - "127.0.0.1:5000:5000"
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://intellihire:${MONGO_PASSWORD}@mongo:27017/intellihire?authSource=admin
+      - CLIENT_ORIGIN=https://apps.intellihire.nlite.in
+      - LLM_PROVIDER=${LLM_PROVIDER:-mock}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - intellihire-network
+
+  mongo:
+    image: mongo:7-jammy
+    container_name: intellihire-mongo
+    restart: always
     environment:
       MONGO_INITDB_ROOT_USERNAME: intellihire
-      MONGO_INITDB_ROOT_PASSWORD: intellihire123
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
       MONGO_INITDB_DATABASE: intellihire
     volumes:
-      - intellihire_mongo_data:/data/db
-
-  mongo-express:
-    image: mongo-express:1.0.2
-    container_name: intellihire-mongo-express
-    restart: unless-stopped
-    depends_on:
-      - mongo
+      - mongodata:/data/db
     ports:
-      - "8081:8081"
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: intellihire
-      ME_CONFIG_MONGODB_ADMINPASSWORD: intellihire123
-      ME_CONFIG_MONGODB_URL: mongodb://intellihire:intellihire123@mongo:27017/
-      ME_CONFIG_BASICAUTH: "false"
+      - "127.0.0.1:27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - intellihire-network
+
+networks:
+  intellihire-network:
+    name: intellihire-network
+    driver: bridge
 
 volumes:
-  intellihire_mongo_data:
-
+  mongodata:

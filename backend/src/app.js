@@ -1,7 +1,12 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import { existsSync } from "fs";
 import connectDB from "./config/db.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import authRoutes from "./routes/authRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
 import resumeRoutes from "./routes/resumeRoutes.js";
@@ -83,7 +88,17 @@ app.use("/resumes", resumeRoutes);
 app.use("/api/users", userRoutes);
 app.use("/users", userRoutes);
 
-app.use(notFoundHandler);
+// Serve built React frontend in production
+const publicPath = join(__dirname, "../../../public");
+if (existsSync(publicPath)) {
+  app.use(express.static(publicPath));
+  app.get("*", (_req, res) => {
+    res.sendFile(join(publicPath, "index.html"));
+  });
+} else {
+  app.use(notFoundHandler);
+}
+
 app.use(errorHandler);
 
 export default app;
